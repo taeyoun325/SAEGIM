@@ -1,0 +1,119 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User,
+  deleteUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from 'firebase/auth';
+import { auth } from '../config/firebase';
+import { createUserProfile, getUserProfile } from '../services/userService';
+import { reserveNickname } from '../services/nicknameService';
+import { deleteAllUserContent } from '../services/accountService';
+import { UserProfile } from '../types/models';
+import { validateNickname } from '../utils/nickname';
+
+// 계정 삭제 시 비밀번호 재확인이 필요할 때 화면에서 구분할 수 있도록 쓰는 에러 코드.
+export const REAUTH_REQUIRED = 'REAUTH_REQUIRED';
+
+interface AuthContextValue {
+  user: User | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  signUp: (email: string, password: string, nickname: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  deleteAccount: (password?: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        const p = await getUserProfile(firebaseUser.uid);
+        setProfile(p);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  async function signUp(email: string, password: string, nickname: string) {
+    const { valid, reason } = validateNickname(nickname);
+    if (!valid) throw new Error(reason);
+
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    try {
+      // 닉네임 예약이 실패하면(중복) 방금 만든 계정을 되돌려 유령 계정이 남지 않게 한다.
+      await reserveNickname(nickname, cred.user.uid);
+    } catch (e) {
+      await deleteUser(cred.user).catch(() => undefined);
+      throw e;
+    }
+
+    const p = await createUserProfile(cred.user.uid, nickname.trim());
+    setProfile(p);
+  }
+
+  async function signIn(email: string, password: string) {
+    await signInWithEmailAndPassword(auth, email, password);
+  }
+
+  async function signOut() {
+    await firebaseSignOut(auth);
+  }
+
+  // 계정과 사용자가 만든 모든 콘텐츠를 삭제한다.
+  // Firebase는 마지막 로그인이 오래된 경우 삭제를 거부하므로, 그때는 비밀번호로 재인증한다.
+  async function deleteAccount(password?: string) {
+    const current = auth.currentUser;
+    if (!current) return;
+
+    if (password && current.email) {
+      const credential = EmailAuthProvider.credential(current.email, password);
+      await reauthenticateWithCredential(current, credential);
+    }
+
+    await deleteAllUserContent(current.uid, profile?.nickname);
+
+    try {
+      await deleteUser(current);
+    } catch (e: any) {
+      if (e?.code === 'auth/requires-recent-login') {
+        throw new Error(REAUTH_REQUIRED);
+      }
+      throw e;
+    }
+  }
+
+  async function refreshProfile() {
+    if (!user) return;
+    const p = await getUserProfile(user.uid);
+    setProfile(p);
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, deleteAccount, refreshProfile }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}

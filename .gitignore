@@ -31,7 +31,15 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+!.env.example
+
+# firebase admin credentials
+serviceAccountKey.json
+
+# Claude Code 런타임 파일
+.claude/scheduled_tasks.lock
 
 # typescript
 *.tsbuildinfo

@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // 글감: 서버(Cloud Functions/Admin SDK)만 생성/수정. 클라이언트는 읽기만.
+    match /prompts/{promptId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 사용자 프로필: 본인만 쓰기, 로그인한 사용자는 공개 프로필 필드를 읽을 수 있음.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    // 닉네임 예약: 문서 ID(소문자 닉네임)가 유니크 제약 역할을 한다.
+    // 아무도 이미 예약된 문서를 덮어쓸 수 없고, 본인 예약만 해제(계정 삭제 시)할 수 있다.
+    match /nicknames/{nicknameKey} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // 글(Writing): 비공개 글은 작성자만 조회, 본인 글만 생성/수정.
+    match /writings/{writingId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 게시물: 공개 콘텐츠이므로 로그인한 사용자는 모두 읽기 가능. 본인만 생성/삭제.
+    // 업데이트는 likeCount/commentCount를 ±1 하는 것만 허용하고 나머지 필드는 불변으로 강제한다.
+    function onlyCountersChanged() {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.writingId == resource.data.writingId
+        && request.resource.data.promptId == resource.data.promptId
+        && request.resource.data.lines == resource.data.lines
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.likeCount >= 0
+        && request.resource.data.commentCount >= 0
+        && (request.resource.data.likeCount - resource.data.likeCount == 1
+            || request.resource.data.likeCount - resource.data.likeCount == -1
+            || request.resource.data.likeCount == resource.data.likeCount)
+        && (request.resource.data.commentCount - resource.data.commentCount == 1
+            || request.resource.data.commentCount - resource.data.commentCount == -1
+            || request.resource.data.commentCount == resource.data.commentCount);
+    }
+
+    function ownerEditingContent() {
+      return isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.writingId == resource.data.writingId
+        && request.resource.data.promptId == resource.data.promptId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.likeCount == resource.data.likeCount
+        && request.resource.data.commentCount == resource.data.commentCount;
+    }
+
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && (onlyCountersChanged() || ownerEditingContent());
+    }
+
+    // 좋아요: 본인 소유 좋아요만 생성/삭제, doc id는 `${postId}_${userId}` 형식으로 중복 방지.
+    match /likes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && likeId == request.resource.data.postId + '_' + request.resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // 댓글: 로그인 사용자는 읽기/작성 가능, 본인 댓글만 삭제.
+    match /comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // 신고: 본인 명의로만 생성, 조회/수정은 서버(관리자)만.
+    match /reports/{reportId} {
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+      allow read: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
