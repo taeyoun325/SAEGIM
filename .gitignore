@@ -50,3 +50,6 @@ serviceAccountKey.json
 
 # 스토어 자료 (생성물, 필요 시 스크립트로 재생성)
 store-assets/
+
+# Firebase CLI 배포 캐시
+.firebase/
