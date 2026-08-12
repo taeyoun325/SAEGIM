@@ -7,20 +7,28 @@ import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { isReminderEnabled, enableDailyReminder, disableDailyReminder } from '../services/notificationService';
+import { isAdmin } from '../services/adminService';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SettingsScreen() {
-  const { signOut, deleteAccount } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
+  const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     isReminderEnabled().then(setReminderOn);
   }, []);
+
+  // 관리자 메뉴는 admins 컬렉션에 등록된 계정에만 보인다.
+  useEffect(() => {
+    if (!user) return;
+    isAdmin(user.uid).then(setAdmin);
+  }, [user]);
 
   async function toggleReminder(next: boolean) {
     if (Platform.OS === 'web') {
@@ -96,6 +104,17 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {admin && (
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={[styles.rowButton, styles.rowButtonNoBorder]}
+            onPress={() => navigation.navigate('AdminReports')}
+          >
+            <Text style={styles.adminText}>🛡️ 신고 관리 (관리자)</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.card}>
         <TouchableOpacity style={styles.rowButton} onPress={signOut}>
           <Text style={styles.rowButtonText}>로그아웃</Text>
@@ -125,5 +144,6 @@ const styles = StyleSheet.create({
   rowButton: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   rowButtonNoBorder: { borderBottomWidth: 0 },
   rowButtonText: { color: colors.text, fontSize: 15 },
+  adminText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   dangerText: { color: colors.danger, fontSize: 15 },
 });

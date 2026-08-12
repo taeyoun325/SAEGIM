@@ -2,11 +2,36 @@
 
 매일 같은 글감으로 함께 쓰는 3줄 SNS.
 
+**웹으로 바로 써보기**: https://saegim.web.app
+
 ## 기술 스택
 
 - Expo (React Native) + TypeScript
-- Firebase: Authentication, Firestore, Storage
+- Firebase: Authentication, Firestore, Hosting
 - EAS Build (Android AAB / iOS 빌드용, 로컬 Android Studio 불필요)
+
+## 웹 배포
+
+```bash
+npm run deploy:web
+```
+
+- 배포 주소: `https://saegim.web.app`, `https://post-it-665d6.web.app` (동일한 사이트, 두 주소로 접속 가능)
+- PWA 지원: 모바일 브라우저에서 "홈 화면에 추가"로 앱처럼 설치 가능
+- `firebase.json`의 `ignore`에 `**/node_modules/**`를 넣지 말 것 — Expo가 폰트/아이콘을
+  `dist/assets/node_modules/...` 경로로 내보내므로 그 규칙을 쓰면 에셋이 통째로 빠진다.
+
+## 관리자 (신고 처리)
+
+```bash
+node scripts/set-admin.js add <이메일>     # 관리자 지정
+node scripts/set-admin.js remove <이메일>  # 관리자 해제
+node scripts/set-admin.js list             # 관리자 목록
+```
+
+관리자로 지정된 계정은 앱의 **설정 → 🛡️ 신고 관리**에서 미처리 신고를 확인하고,
+신고된 게시물/댓글을 삭제하거나 "문제 없음"으로 처리할 수 있다.
+`admins/{uid}` 문서는 보안 규칙상 클라이언트가 쓸 수 없어 이 스크립트로만 지정 가능하다.
 
 ## 시작하기
 

@@ -19,4 +19,5 @@ export type RootStackParamList = {
   Report: { targetType: 'post' | 'comment'; targetId: string };
   BlockedUsers: undefined;
   PrivacyPolicy: undefined;
+  AdminReports: undefined;
 };
