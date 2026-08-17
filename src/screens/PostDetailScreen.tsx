@@ -24,7 +24,7 @@ import { toggleSave, hasSaved } from '../services/saveService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { COMMENT_MAX_LENGTH } from '../constants/config';
-import { getUserProfile } from '../services/userService';
+import { getDisplayProfile } from '../services/userService';
 import { logEvent } from '../services/statsService';
 import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
@@ -59,7 +59,7 @@ export default function PostDetailScreen() {
       const p = await getPostById(postId);
       setPost(p);
       if (p) {
-        const author = await getUserProfile(p.userId);
+        const author = await getDisplayProfile(p.userId);
         setAuthorNickname(author?.nickname ?? '알 수 없음');
         const [commentPage, likedResult, savedResult] = await Promise.all([
           getComments(postId),

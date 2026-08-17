@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Pressable, Animated } from 'react-n
 import Text from './Text';
 import { Post } from '../types/models';
 import { colors, spacing, radius } from '../constants/theme';
-import { getUserProfile } from '../services/userService';
+import { getDisplayProfile } from '../services/userService';
 import { toggleLike, hasLiked } from '../services/likeService';
 import { useAuth } from '../context/AuthContext';
 import { useShare } from '../context/ShareContext';
@@ -29,7 +29,7 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment 
   const heartAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    getUserProfile(post.userId).then((p) => setNickname(p?.nickname ?? '알 수 없음'));
+    getDisplayProfile(post.userId).then((p) => setNickname(p?.nickname ?? '알 수 없음'));
   }, [post.userId]);
 
   useEffect(() => {

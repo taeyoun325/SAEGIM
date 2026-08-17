@@ -43,8 +43,43 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   return snap.exists() ? (snap.data() as UserProfile) : null;
 }
 
+// 화면에 작성자 이름을 띄우려고 프로필을 읽는 곳이 많다(피드 카드마다 1건, 댓글, 알림함).
+// 피드를 한 번 볼 때마다 같은 사람 프로필을 반복해서 읽게 되므로 짧게 캐시한다.
+// 본인 프로필(AuthContext)은 항상 정확해야 하므로 위의 getUserProfile을 그대로 쓰고,
+// 여기에는 "남의 이름을 보여주기 위한 조회"만 태운다.
+const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+const profileCache = new Map<string, { profile: UserProfile | null; at: number }>();
+// 같은 프로필을 동시에 여러 카드가 요청하면 요청 하나로 합친다.
+const inFlight = new Map<string, Promise<UserProfile | null>>();
+
+export async function getDisplayProfile(uid: string): Promise<UserProfile | null> {
+  const cached = profileCache.get(uid);
+  if (cached && Date.now() - cached.at < PROFILE_CACHE_TTL_MS) return cached.profile;
+
+  const pending = inFlight.get(uid);
+  if (pending) return pending;
+
+  const request = getUserProfile(uid)
+    .then((profile) => {
+      profileCache.set(uid, { profile, at: Date.now() });
+      return profile;
+    })
+    .finally(() => {
+      inFlight.delete(uid);
+    });
+
+  inFlight.set(uid, request);
+  return request;
+}
+
+// 프로필이 바뀌면 캐시가 옛 이름을 붙들고 있지 않도록 즉시 버린다.
+export function invalidateDisplayProfile(uid: string): void {
+  profileCache.delete(uid);
+}
+
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>): Promise<void> {
   await updateDoc(doc(db, usersCol, uid), data as Record<string, unknown>);
+  invalidateDisplayProfile(uid);
 }
 
 export async function blockUser(uid: string, targetUid: string): Promise<void> {

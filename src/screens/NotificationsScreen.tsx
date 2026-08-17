@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../constants/theme';
 import { AppNotification } from '../types/models';
 import { getNotifications, markAllRead } from '../services/inboxService';
-import { getUserProfile } from '../services/userService';
+import { getDisplayProfile } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../navigation/types';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
@@ -42,14 +42,12 @@ export default function NotificationsScreen() {
     setLoading(true);
     try {
       const list = await getNotifications(user.uid);
-      const nicknameCache = new Map<string, string>();
+      // getDisplayProfile이 같은 사람에 대한 동시 요청을 하나로 합쳐주므로
+      // 같은 사람이 여러 번 알림을 보냈어도 조회는 한 번만 나간다.
       const withNicknames: Row[] = await Promise.all(
         list.map(async (n) => {
-          if (!nicknameCache.has(n.actorId)) {
-            const actor = await getUserProfile(n.actorId);
-            nicknameCache.set(n.actorId, actor?.nickname ?? '알 수 없음');
-          }
-          return { ...n, actorNickname: nicknameCache.get(n.actorId)! };
+          const actor = await getDisplayProfile(n.actorId);
+          return { ...n, actorNickname: actor?.nickname ?? '알 수 없음' };
         })
       );
       setRows(withNicknames);
