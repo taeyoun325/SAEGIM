@@ -43,7 +43,8 @@
           "color": "#4A3F35"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-sharing"
     ]
   }
 }

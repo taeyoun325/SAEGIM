@@ -1,5 +1,6 @@
 import { doc, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { bumpDailyStats } from './statsService';
 
 const likesCol = 'likes';
 const postsCol = 'posts';
@@ -13,7 +14,7 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
   const likeRef = doc(db, likesCol, likeDocId(postId, userId));
   const postRef = doc(db, postsCol, postId);
 
-  return runTransaction(db, async (tx) => {
+  const nowLiked = await runTransaction(db, async (tx) => {
     const likeSnap = await tx.get(likeRef);
     const postSnap = await tx.get(postRef);
     if (!postSnap.exists()) throw new Error('게시물을 찾을 수 없어요.');
@@ -28,6 +29,9 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
       return true;
     }
   });
+
+  if (nowLiked) bumpDailyStats({ likesCount: 1 }).catch(() => {});
+  return nowLiked;
 }
 
 export async function hasLiked(postId: string, userId: string): Promise<boolean> {

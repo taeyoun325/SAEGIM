@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,30 +11,35 @@ import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
-import { WRITING_LINE_COUNT, WRITING_LINE_MAX_LENGTH } from '../constants/config';
+import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { DailyPrompt, Writing } from '../types/models';
 import { getTodayPrompt } from '../services/promptService';
 import { createWriting, getMyWritingForPrompt, validateLines, updateWritingContent } from '../services/writingService';
 import { publishWriting, unpublishPost, updatePostContent } from '../services/postService';
 import { recordTodayWriting, adjustPublicPostCount } from '../services/userService';
+import { evaluateAndAwardBadges } from '../services/badgeService';
 import { saveDraft, loadDraft, clearDraft, isPromptRevealed, markPromptRevealed } from '../services/draftService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { todayDateString } from '../utils/date';
 import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
+import SettingsGearButton from '../components/SettingsGearButton';
+import ShareCard from '../components/ShareCard';
+import { shareAsImage } from '../services/shareService';
 
 export default function TodayScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [writing, setWriting] = useState<Writing | null>(null);
-  const [lines, setLines] = useState<string[]>(Array(WRITING_LINE_COUNT).fill(''));
+  const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -47,10 +52,10 @@ export default function TodayScreen() {
         const w = await getMyWritingForPrompt(user.uid, p.id);
         setWriting(w);
         if (w) {
-          setLines([...w.lines, ...Array(WRITING_LINE_COUNT - w.lines.length).fill('')].slice(0, WRITING_LINE_COUNT));
+          setText(w.lines.join('\n'));
         } else {
           const draft = await loadDraft(user.uid, p.id);
-          if (draft) setLines([...draft, ...Array(WRITING_LINE_COUNT - draft.length).fill('')].slice(0, WRITING_LINE_COUNT));
+          if (draft) setText(draft.join('\n'));
         }
       }
     } catch (e) {
@@ -70,11 +75,10 @@ export default function TodayScreen() {
   useEffect(() => {
     if (!user || !prompt || writing) return;
     const timer = setTimeout(() => {
-      const hasContent = lines.some((l) => l.trim().length > 0);
-      if (hasContent) saveDraft(user.uid, prompt.id, lines);
+      if (text.trim().length > 0) saveDraft(user.uid, prompt.id, text.split('\n'));
     }, 500);
     return () => clearTimeout(timer);
-  }, [lines, user, prompt, writing]);
+  }, [text, user, prompt, writing]);
 
   async function handleReveal() {
     setRevealed(true);
@@ -91,6 +95,7 @@ export default function TodayScreen() {
     if (!user || !prompt) return;
     setError(null);
 
+    const lines = text.split('\n');
     const { valid, reason } = validateLines(lines);
     if (!valid) {
       setError(reason ?? '내용을 확인해주세요.');
@@ -110,10 +115,14 @@ export default function TodayScreen() {
     try {
       let currentWriting = writing;
       const cleanLines = lines.filter((l) => l.trim().length > 0);
+      let newBadges: Awaited<ReturnType<typeof evaluateAndAwardBadges>> = [];
 
       if (!currentWriting) {
         const id = await createWriting(user.uid, prompt.id, lines, 'private');
-        await recordTodayWriting(user.uid, todayDateString());
+        const updatedProfile = await recordTodayWriting(user.uid, todayDateString());
+        if (updatedProfile) {
+          newBadges = await evaluateAndAwardBadges(user.uid, updatedProfile);
+        }
         currentWriting = {
           id,
           userId: user.uid,
@@ -141,11 +150,25 @@ export default function TodayScreen() {
       setWriting(currentWriting);
       await clearDraft(user.uid, prompt.id);
       await refreshProfile();
-      await notify(publish ? '게시했어요.' : '새겼어요.', '오늘의 생각을 새겼어요.');
+      if (newBadges.length > 0) {
+        const b = newBadges[0];
+        await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
+      } else {
+        await notify(publish ? '게시했어요.' : '새겼어요.', '오늘의 생각을 새겼어요.');
+      }
     } catch (e) {
       setError(publish ? '게시에 실패했어요. 다시 시도해주세요.' : '저장에 실패했어요. 다시 시도해주세요.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleShare() {
+    if (!writing) return;
+    try {
+      await shareAsImage(shareCardRef, `saegim-${writing.id}`);
+    } catch (e) {
+      await notify('오류', '공유 이미지를 만들지 못했어요.');
     }
   }
 
@@ -182,11 +205,13 @@ export default function TodayScreen() {
   const hasWritten = !!writing;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
+    <View style={{ flex: 1 }}>
+      <SettingsGearButton />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
       <Text style={styles.appName}>새김</Text>
 
       {!prompt ? (
@@ -206,26 +231,25 @@ export default function TodayScreen() {
           {hasWritten && (
             <View style={styles.doneBadge}>
               <Text style={styles.doneBadgeText}>✓ 오늘의 생각을 새겼어요.</Text>
+              <TouchableOpacity onPress={handleShare}>
+                <Text style={styles.shareLink}>📤 이미지로 공유하기</Text>
+              </TouchableOpacity>
             </View>
           )}
 
           <Text style={styles.guide}>이 글감을 보고 떠오른 생각을 새겨보세요.</Text>
 
-          {lines.map((line, i) => (
-            <TextInput
-              key={i}
-              style={styles.lineInput}
-              placeholder={`${['첫', '두', '세'][i]} 번째 줄`}
-              placeholderTextColor={colors.textSoft}
-              value={line}
-              maxLength={WRITING_LINE_MAX_LENGTH}
-              onChangeText={(text) => {
-                const next = [...lines];
-                next[i] = text;
-                setLines(next);
-              }}
-            />
-          ))}
+          <TextInput
+            style={styles.writeInput}
+            placeholder="이 글감을 보고 떠오른 생각을 적어보세요"
+            placeholderTextColor={colors.textSoft}
+            value={text}
+            maxLength={WRITING_TOTAL_MAX_LENGTH}
+            onChangeText={setText}
+            multiline
+            textAlignVertical="top"
+          />
+          <Text style={styles.counter}>{text.length}/{WRITING_TOTAL_MAX_LENGTH}</Text>
 
           {error && <Text style={styles.error}>{error}</Text>}
 
@@ -250,7 +274,13 @@ export default function TodayScreen() {
         </>
       )}
       <BackgroundMascot source={require('../assets/mascot-today.png')} />
-    </ScrollView>
+      </ScrollView>
+      {writing && (
+        <View style={styles.offscreen} pointerEvents="none">
+          <ShareCard ref={shareCardRef} lines={writing.lines} createdAt={writing.createdAt} />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -267,17 +297,21 @@ const styles = StyleSheet.create({
   promptTitle: { color: colors.primary, fontSize: 26, fontWeight: '800' },
   doneBadge: { marginBottom: spacing.md },
   doneBadgeText: { color: colors.success, fontWeight: '600' },
+  shareLink: { color: colors.primary, fontWeight: '600', marginTop: spacing.xs },
+  offscreen: { position: 'absolute', top: 0, left: -9999 },
   guide: { color: colors.textSoft, marginBottom: spacing.md },
-  lineInput: {
+  writeInput: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    minHeight: 140,
     fontSize: 16,
+    lineHeight: 24,
     color: colors.text,
   },
+  counter: { color: colors.textSoft, fontSize: 12, textAlign: 'right', marginTop: spacing.xs },
   error: { color: colors.danger, marginVertical: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   button: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },

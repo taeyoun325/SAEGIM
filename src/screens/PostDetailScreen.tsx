@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -22,6 +22,8 @@ import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { COMMENT_MAX_LENGTH } from '../constants/config';
 import { getUserProfile } from '../services/userService';
+import { shareAsImage } from '../services/shareService';
+import ShareCard from '../components/ShareCard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,6 +41,7 @@ export default function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -72,6 +75,15 @@ export default function PostDetailScreen() {
       setPost({ ...post, likeCount: post.likeCount + (nowLiked ? 1 : -1) });
     } catch (e) {
       await notify('오류', '좋아요 처리에 실패했어요.');
+    }
+  }
+
+  async function handleShare() {
+    if (!post) return;
+    try {
+      await shareAsImage(shareCardRef, `saegim-${post.id}`);
+    } catch (e) {
+      await notify('오류', '공유 이미지를 만들지 못했어요.');
     }
   }
 
@@ -151,6 +163,9 @@ export default function PostDetailScreen() {
                   <Text style={liked ? styles.likedText : styles.actionText}>{liked ? '♥' : '♡'} {post.likeCount}</Text>
                 </TouchableOpacity>
                 <Text style={styles.actionText}>💬 {post.commentCount}</Text>
+                <TouchableOpacity onPress={handleShare}>
+                  <Text style={styles.actionText}>📤 공유</Text>
+                </TouchableOpacity>
                 {!isOwner && (
                   <TouchableOpacity onPress={() => navigation.navigate('Report', { targetType: 'post', targetId: post.id })}>
                     <Text style={styles.reportText}>신고</Text>
@@ -197,6 +212,9 @@ export default function PostDetailScreen() {
           <Text style={styles.sendText}>등록</Text>
         </TouchableOpacity>
       </View>
+      <View style={styles.offscreen} pointerEvents="none">
+        <ShareCard ref={shareCardRef} lines={post.lines} createdAt={post.createdAt} />
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -204,6 +222,7 @@ export default function PostDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  offscreen: { position: 'absolute', top: 0, left: -9999 },
   list: { padding: spacing.lg, paddingBottom: spacing.xl },
   postCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
   nickname: { fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },

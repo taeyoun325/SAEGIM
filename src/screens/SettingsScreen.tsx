@@ -106,11 +106,14 @@ export default function SettingsScreen() {
 
       {admin && (
         <View style={styles.card}>
+          <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('AdminReports')}>
+            <Text style={styles.adminText}>🛡️ 신고 관리 (관리자)</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.rowButton, styles.rowButtonNoBorder]}
-            onPress={() => navigation.navigate('AdminReports')}
+            onPress={() => navigation.navigate('AdminDashboard')}
           >
-            <Text style={styles.adminText}>🛡️ 신고 관리 (관리자)</Text>
+            <Text style={styles.adminText}>📊 통계 대시보드 (관리자)</Text>
           </TouchableOpacity>
         </View>
       )}

@@ -5,7 +5,6 @@ import { MainTabParamList } from './types';
 import TodayScreen from '../screens/TodayScreen';
 import FeedScreen from '../screens/FeedScreen';
 import CalendarScreen from '../screens/CalendarScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors, fonts, spacing } from '../constants/theme';
 import { useIsWideWeb } from '../hooks/useResponsive';
@@ -17,7 +16,6 @@ const ICONS: Record<keyof MainTabParamList, string> = {
   Today: '🏠',
   Feed: '📰',
   Calendar: '📅',
-  Settings: '⚙️',
 };
 
 const LABELS: Record<keyof MainTabParamList, string> = {
@@ -25,7 +23,6 @@ const LABELS: Record<keyof MainTabParamList, string> = {
   Today: '오늘',
   Feed: '피드',
   Calendar: '캘린더',
-  Settings: '설정',
 };
 
 export default function MainTabs() {
@@ -70,7 +67,6 @@ export default function MainTabs() {
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Feed" component={FeedScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }

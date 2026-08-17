@@ -11,17 +11,17 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Writing } from '../types/models';
-import { WRITING_LINE_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED } from '../constants/config';
+import { WRITING_TOTAL_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED } from '../constants/config';
 
 const writingsCol = 'writings';
 
 export function validateLines(lines: string[]): { valid: boolean; reason?: string } {
   const nonEmpty = lines.filter((l) => l.trim().length > 0);
   if (nonEmpty.length < WRITING_MIN_LINES_REQUIRED) {
-    return { valid: false, reason: '최소 한 줄은 새겨주세요.' };
+    return { valid: false, reason: '내용을 새겨주세요.' };
   }
-  if (lines.some((l) => l.length > WRITING_LINE_MAX_LENGTH)) {
-    return { valid: false, reason: `한 줄은 ${WRITING_LINE_MAX_LENGTH}자 이내로 새겨주세요.` };
+  if (lines.join('\n').length > WRITING_TOTAL_MAX_LENGTH) {
+    return { valid: false, reason: `${WRITING_TOTAL_MAX_LENGTH}자 이내로 새겨주세요.` };
   }
   return { valid: true };
 }

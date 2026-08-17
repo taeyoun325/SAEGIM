@@ -12,6 +12,7 @@ import { Writing, DailyPrompt, Post } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
+import SettingsGearButton from '../components/SettingsGearButton';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -100,7 +101,9 @@ export default function CalendarScreen() {
   const todayWriting = myWritings[todayPromptId];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <View style={{ flex: 1 }}>
+      <SettingsGearButton />
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setCursor(new Date(year, month - 1, 1))}>
           <Text style={styles.nav}>‹</Text>
@@ -127,12 +130,33 @@ export default function CalendarScreen() {
             const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
             const hasWriting = !!myWritings[promptId];
             const isToday = dateStr === todayStr;
+            const isFuture = dateStr > todayStr;
+            const isPast = dateStr < todayStr;
             return (
-              <TouchableOpacity key={i} style={styles.cell} onPress={() => openDay(day)}>
-                <View style={[styles.dayCircle, isToday && styles.todayCircle]}>
-                  <Text style={[styles.dayText, isToday && styles.todayText]}>{day}</Text>
+              <TouchableOpacity
+                key={i}
+                style={[styles.cell, isFuture && styles.cellFuture]}
+                onPress={() => openDay(day)}
+                disabled={isFuture}
+              >
+                <View
+                  style={[
+                    styles.dayCircle,
+                    hasWriting && styles.writtenCircle,
+                    isToday && styles.todayBorder,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayText,
+                      isToday && styles.todayText,
+                      isPast && !hasWriting && styles.pastEmptyText,
+                      hasWriting && styles.writtenText,
+                    ]}
+                  >
+                    {day}
+                  </Text>
                 </View>
-                {hasWriting && <View style={styles.dot} />}
               </TouchableOpacity>
             );
           })}
@@ -206,7 +230,8 @@ export default function CalendarScreen() {
         </View>
       </Modal>
       <BackgroundMascot source={require('../assets/mascot-calendar.png')} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -221,11 +246,14 @@ const styles = StyleSheet.create({
   weekday: { flex: 1, textAlign: 'center', color: colors.textSoft, fontSize: 12, marginBottom: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  cellFuture: { opacity: 0.35 },
   dayCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  todayCircle: { backgroundColor: colors.accentSoft },
+  writtenCircle: { backgroundColor: colors.accent },
+  todayBorder: { borderWidth: 2, borderColor: colors.primary },
   dayText: { color: colors.text, fontSize: 14 },
+  writtenText: { color: '#fff', fontWeight: '700' },
+  pastEmptyText: { color: colors.textSoft },
   todayText: { color: colors.primary, fontWeight: '700' },
-  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.accent, marginTop: 2 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: '80%' },
   sheetDate: { fontSize: 20, fontWeight: '800', color: colors.primary },

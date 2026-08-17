@@ -11,7 +11,8 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Comment, Post, Report } from '../types/models';
+import { Comment, DailyStats, Post, Report, UserProfile } from '../types/models';
+import { todayDateString, timestampToDateString } from '../utils/date';
 
 // 관리자 여부 확인. admins/{uid} 문서는 Admin SDK로만 생성되므로
 // 사용자가 스스로 관리자가 될 수는 없다.
@@ -58,6 +59,63 @@ export async function getPendingReports(max = 50): Promise<ReportWithTarget[]> {
       }
     })
   );
+}
+
+const dailyStatsCol = 'dailyStats';
+
+function emptyStats(date: string): DailyStats {
+  return { date, newSignups: 0, writingsCount: 0, activeUserIds: [], commentsCount: 0, likesCount: 0 };
+}
+
+async function getDailyStats(date: string): Promise<DailyStats | null> {
+  const snap = await getDoc(doc(db, dailyStatsCol, date));
+  return snap.exists() ? (snap.data() as DailyStats) : null;
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// 오늘 하루치 운영 지표. dailyStats/{오늘} 문서 하나만 읽으므로 원문 콘텐츠에는 접근하지 않는다.
+export async function getTodayStats(): Promise<DailyStats> {
+  const date = todayDateString();
+  return (await getDailyStats(date)) ?? emptyStats(date);
+}
+
+// 가입일 기준 N일 이내에 한 번이라도 다시 글을 쓴 사용자 비율.
+// 최근 가입자 표본(sampleLimit)만 살펴봐 비용을 억제한다.
+export async function getRevisitRate(
+  days: 7 | 30,
+  sampleLimit = 300
+): Promise<{ eligibleCount: number; revisitedCount: number; rate: number }> {
+  const today = todayDateString();
+  const cutoff = addDays(today, -days);
+
+  const snap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(sampleLimit)));
+  const users = snap.docs.map((d) => d.data() as UserProfile);
+  const eligible = users.filter((u) => timestampToDateString(u.createdAt) <= cutoff);
+  if (eligible.length === 0) return { eligibleCount: 0, revisitedCount: 0, rate: 0 };
+
+  const neededDates = new Set<string>();
+  const windows = eligible.map((u) => {
+    const signupDate = timestampToDateString(u.createdAt);
+    const dates = Array.from({ length: days }, (_, i) => addDays(signupDate, i + 1));
+    dates.forEach((d) => neededDates.add(d));
+    return { uid: u.uid, dates };
+  });
+
+  const statsMap = new Map<string, Set<string>>();
+  await Promise.all(
+    Array.from(neededDates).map(async (date) => {
+      const stats = await getDailyStats(date);
+      statsMap.set(date, new Set(stats?.activeUserIds ?? []));
+    })
+  );
+
+  const revisitedCount = windows.filter((w) => w.dates.some((d) => statsMap.get(d)?.has(w.uid))).length;
+  return { eligibleCount: eligible.length, revisitedCount, rate: revisitedCount / eligible.length };
 }
 
 // 신고된 콘텐츠를 삭제하고 신고를 처리 완료로 표시한다.

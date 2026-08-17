@@ -56,6 +56,7 @@ export interface UserProfile {
   streakCount: number;
   lastWritingDate?: string | null;
   blockedUserIds: string[];
+  earnedBadgeIds: string[];
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';
@@ -70,4 +71,15 @@ export interface Report {
   detail?: string;
   createdAt: number;
   status: 'pending' | 'reviewed' | 'dismissed';
+}
+
+// 관리자 통계용 일별 집계 카운터. 원문 콘텐츠는 담지 않고 개수/uid만 담아
+// 관리자가 사용자의 비공개 글 내용을 열람하지 않아도 지표를 볼 수 있게 한다.
+export interface DailyStats {
+  date: string; // "2026-08-17"
+  newSignups: number;
+  writingsCount: number;
+  activeUserIds: string[];
+  commentsCount: number;
+  likesCount: number;
 }

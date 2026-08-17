@@ -11,6 +11,8 @@ import ReportScreen from '../screens/ReportScreen';
 import BlockedUsersScreen from '../screens/BlockedUsersScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import AdminReportsScreen from '../screens/AdminReportsScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 import SplashScreen from '../screens/SplashScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -44,6 +46,8 @@ export default function RootNavigator() {
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: '차단 목록' }} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: '개인정보처리방침' }} />
           <Stack.Screen name="AdminReports" component={AdminReportsScreen} options={{ title: '신고 관리' }} />
+          <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: '통계 대시보드' }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
         </Stack.Navigator>
       )}
     </NavigationContainer>

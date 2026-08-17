@@ -9,7 +9,6 @@ export type MainTabParamList = {
   Today: undefined;
   Feed: undefined;
   Calendar: undefined;
-  Settings: undefined;
 };
 
 export type RootStackParamList = {
@@ -20,4 +19,6 @@ export type RootStackParamList = {
   BlockedUsers: undefined;
   PrivacyPolicy: undefined;
   AdminReports: undefined;
+  AdminDashboard: undefined;
+  Settings: undefined;
 };

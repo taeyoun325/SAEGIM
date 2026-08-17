@@ -15,6 +15,7 @@ import { db } from '../config/firebase';
 import { Comment } from '../types/models';
 import { COMMENT_MAX_LENGTH, COMMENT_PAGE_SIZE } from '../constants/config';
 import { adjustCommentCount } from './postService';
+import { bumpDailyStats } from './statsService';
 
 const commentsCol = 'comments';
 
@@ -36,6 +37,7 @@ export async function addComment(postId: string, userId: string, authorNickname:
     createdAt: Date.now(),
   } satisfies Omit<Comment, 'id'>);
   await adjustCommentCount(postId, 1);
+  bumpDailyStats({ commentsCount: 1 }).catch(() => {});
   return docRef.id;
 }
 
