@@ -28,7 +28,12 @@ export async function deleteAllUserContent(uid: string, nickname?: string): Prom
   const comments = await deleteQueryDocs('comments', 'userId', uid);
   const likes = await deleteQueryDocs('likes', 'userId', uid);
   await deleteQueryDocs('saves', 'userId', uid);
+  await deleteQueryDocs('commentLikes', 'userId', uid);
   const writings = await deleteQueryDocs('writings', 'userId', uid);
+
+  // 알림함도 흔적이 남지 않게 정리한다(내가 받은 것 + 내가 남긴 것 모두).
+  await deleteQueryDocs('notifications', 'recipientId', uid);
+  await deleteQueryDocs('notifications', 'actorId', uid);
 
   // 닉네임 예약을 해제해 다른 사용자가 다시 쓸 수 있게 한다.
   if (nickname) {

@@ -36,11 +36,18 @@ export async function deleteDocsWhere(collectionName: string, field: string, val
   return snap.size;
 }
 
-// 게시물과 연결된 댓글/좋아요/저장 데이터를 함께 지운다. 게시물 삭제(본인/관리자) 경로에서 공용으로 쓴다.
+// 게시물과 연결된 댓글/댓글좋아요/좋아요/저장/알림을 함께 지운다.
+// 게시물 삭제(본인/관리자) 경로에서 공용으로 쓴다.
 export async function deletePostRelatedContent(postId: string): Promise<void> {
+  // 댓글은 개별 문서 id가 있어야 그 댓글에 달린 좋아요를 지울 수 있으므로 먼저 조회한다.
+  const commentsSnap = await getDocs(query(collection(db, 'comments'), where('postId', '==', postId)));
+  for (const c of commentsSnap.docs) {
+    await deleteDocsWhere('commentLikes', 'commentId', c.id);
+  }
   await deleteDocsWhere('comments', 'postId', postId);
   await deleteDocsWhere('likes', 'postId', postId);
   await deleteDocsWhere('saves', 'postId', postId);
+  await deleteDocsWhere('notifications', 'postId', postId);
 }
 
 export async function publishWriting(writing: Writing): Promise<string> {

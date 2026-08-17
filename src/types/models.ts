@@ -39,6 +39,16 @@ export interface Comment {
   authorNickname: string;
   content: string;
   createdAt: number;
+  likeCount?: number;
+  parentCommentId?: string | null; // 답글이면 원댓글 id, 최상위 댓글이면 null
+}
+
+export interface CommentLike {
+  id: string; // `${commentId}_${userId}`
+  commentId: string;
+  postId: string;
+  userId: string;
+  createdAt: number;
 }
 
 export interface Like {
@@ -62,6 +72,7 @@ export interface UserProfile {
   bio?: string | null;
   bestStreak: number;
   preferredCategories?: string[];
+  streakFreezes?: number; // 하루 빠져도 연속 기록을 지켜주는 보호권
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';
@@ -76,6 +87,21 @@ export interface Report {
   detail?: string;
   createdAt: number;
   status: 'pending' | 'reviewed' | 'dismissed';
+}
+
+export type NotificationType = 'post_like' | 'post_comment' | 'comment_like' | 'comment_reply';
+
+// 인앱 알림함(활동 알림). OS 푸시가 아니라 앱을 열었을 때 종 아이콘으로 확인하는 방식.
+// (Cloud Functions/FCM 서버가 없어 실시간 푸시는 불가능 — Firestore 문서 읽기로만 구현한다.)
+export interface AppNotification {
+  id: string;
+  recipientId: string;
+  actorId: string;
+  type: NotificationType;
+  postId: string;
+  commentId?: string | null;
+  createdAt: number;
+  read: boolean;
 }
 
 // 관리자 통계용 일별 집계 카운터. 원문 콘텐츠는 담지 않고 개수/uid만 담아

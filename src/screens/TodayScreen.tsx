@@ -18,6 +18,7 @@ import { createWriting, getMyWritingForPrompt, validateLines, updateWritingConte
 import { publishWriting, unpublishPost, updatePostContent } from '../services/postService';
 import { recordTodayWriting, adjustPublicPostCount } from '../services/userService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
+import { BadgeDef } from '../constants/badges';
 import { logEvent } from '../services/statsService';
 import { saveDraft, loadDraft, clearDraft, isPromptRevealed, markPromptRevealed } from '../services/draftService';
 import { useAuth } from '../context/AuthContext';
@@ -25,7 +26,7 @@ import { useDialog } from '../context/DialogContext';
 import { todayDateString } from '../utils/date';
 import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
-import SettingsGearButton from '../components/SettingsGearButton';
+import TopBarButtons from '../components/TopBarButtons';
 import ShareCard from '../components/ShareCard';
 import ShareThemeModal from '../components/ShareThemeModal';
 import { ShareTheme, DEFAULT_SHARE_THEME } from '../constants/shareThemes';
@@ -136,13 +137,16 @@ export default function TodayScreen() {
     try {
       let currentWriting = writing;
       const cleanLines = lines.filter((l) => l.trim().length > 0);
-      let newBadges: Awaited<ReturnType<typeof evaluateAndAwardBadges>> = [];
+      let newBadges: BadgeDef[] = [];
+      let freezeUsed = false;
 
       if (!currentWriting) {
         const id = await createWriting(user.uid, prompt.id, lines, 'private', prompt.category);
-        const updatedProfile = await recordTodayWriting(user.uid, todayDateString());
-        if (updatedProfile) {
-          newBadges = await evaluateAndAwardBadges(user.uid, updatedProfile);
+        const result = await recordTodayWriting(user.uid, todayDateString());
+        if (result) {
+          freezeUsed = result.freezeUsed;
+          const awarded = await evaluateAndAwardBadges(user.uid, result.profile);
+          newBadges = awarded.newBadges;
         }
         currentWriting = {
           id,
@@ -173,11 +177,14 @@ export default function TodayScreen() {
       setDraftRestored(false);
       await refreshProfile();
       logEvent(publish ? 'publish' : 'write_save').catch(() => {});
+      if (freezeUsed) {
+        await notify('🧊 보호권을 사용했어요', '어제 하루를 건너뛰었지만 연속 기록이 이어졌어요.');
+      }
       if (newBadges.length > 0) {
         logEvent('badge_earned').catch(() => {});
         const b = newBadges[0];
         await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
-      } else {
+      } else if (!freezeUsed) {
         await notify(publish ? '게시했어요.' : '새겼어요.', '오늘의 생각을 새겼어요.');
       }
     } catch (e: any) {
@@ -244,7 +251,7 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SettingsGearButton />
+      <TopBarButtons />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}

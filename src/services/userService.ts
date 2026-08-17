@@ -20,6 +20,7 @@ export async function createUserProfile(uid: string, nickname: string): Promise<
     bio: null,
     bestStreak: 0,
     preferredCategories: [],
+    streakFreezes: 0,
   };
   await setDoc(doc(db, usersCol, uid), profile);
   bumpDailyStats({ newSignups: 1 }).catch(() => {});
@@ -43,18 +44,34 @@ export async function unblockUser(uid: string, targetUid: string): Promise<void>
   await updateDoc(doc(db, usersCol, uid), { blockedUserIds: arrayRemove(targetUid) });
 }
 
+export interface RecordWritingResult {
+  profile: UserProfile;
+  freezeUsed: boolean;
+}
+
 // 오늘 처음 작성했을 때만 호출한다. 연속 작성일수를 갱신하고 갱신된 프로필을 반환한다.
-export async function recordTodayWriting(uid: string, todayDateStr: string): Promise<UserProfile | null> {
+// 정확히 하루를 걸렀고(diffDays===2) 보호권이 있으면 하나 소비해 스트릭을 지킨다
+// (2일 이상 거르면 보호권으로도 못 막는다 — "하루짜리 실수만 봐준다"는 게 이 기능의 취지).
+export async function recordTodayWriting(uid: string, todayDateStr: string): Promise<RecordWritingResult | null> {
   const profile = await getUserProfile(uid);
   if (!profile) return null;
-  if (profile.lastWritingDate === todayDateStr) return profile; // 오늘 이미 기록됨
+  if (profile.lastWritingDate === todayDateStr) return { profile, freezeUsed: false }; // 오늘 이미 기록됨
 
   let nextStreak = 1;
+  let freezeUsed = false;
+  const freezes = profile.streakFreezes ?? 0;
   if (profile.lastWritingDate) {
     const prev = new Date(profile.lastWritingDate);
     const today = new Date(todayDateStr);
     const diffDays = Math.round((today.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
-    nextStreak = diffDays === 1 ? profile.streakCount + 1 : 1;
+    if (diffDays === 1) {
+      nextStreak = profile.streakCount + 1;
+    } else if (diffDays === 2 && freezes > 0) {
+      nextStreak = profile.streakCount + 1;
+      freezeUsed = true;
+    } else {
+      nextStreak = 1;
+    }
   }
 
   const updated = {
@@ -62,10 +79,11 @@ export async function recordTodayWriting(uid: string, todayDateStr: string): Pro
     streakCount: nextStreak,
     bestStreak: Math.max(profile.bestStreak ?? 0, nextStreak),
     lastWritingDate: todayDateStr,
+    streakFreezes: freezeUsed ? freezes - 1 : freezes,
   };
   await updateDoc(doc(db, usersCol, uid), updated);
   bumpDailyStats({ writingsCount: 1, activeUserId: uid }).catch(() => {});
-  return { ...profile, ...updated };
+  return { profile: { ...profile, ...updated }, freezeUsed };
 }
 
 export async function adjustPublicPostCount(uid: string, delta: 1 | -1): Promise<void> {

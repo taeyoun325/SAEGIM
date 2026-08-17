@@ -9,7 +9,7 @@ import { getTodayPrompt } from '../services/promptService';
 import { getPromptFeed, FeedSort } from '../services/postService';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
-import SettingsGearButton from '../components/SettingsGearButton';
+import TopBarButtons from '../components/TopBarButtons';
 import { RootStackParamList } from '../navigation/types';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -99,7 +99,7 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.container}>
-      <SettingsGearButton />
+      <TopBarButtons />
       {prompt && (
         <View style={styles.header}>
           <Text style={styles.headerLabel}>오늘의 글감</Text>

@@ -12,7 +12,7 @@ import { Writing, DailyPrompt, Post } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
-import SettingsGearButton from '../components/SettingsGearButton';
+import TopBarButtons from '../components/TopBarButtons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -103,7 +103,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SettingsGearButton />
+      <TopBarButtons />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setCursor(new Date(year, month - 1, 1))}>

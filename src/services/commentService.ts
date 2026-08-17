@@ -15,9 +15,10 @@ import {
 import { db } from '../config/firebase';
 import { Comment } from '../types/models';
 import { COMMENT_MAX_LENGTH, COMMENT_PAGE_SIZE } from '../constants/config';
-import { adjustCommentCount } from './postService';
+import { adjustCommentCount, deleteDocsWhere } from './postService';
 import { bumpDailyStats } from './statsService';
 import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
+import { createNotification } from './inboxService';
 
 const commentsCol = 'comments';
 
@@ -28,7 +29,19 @@ export function validateComment(content: string): { valid: boolean; reason?: str
   return { valid: true };
 }
 
-export async function addComment(postId: string, userId: string, authorNickname: string, content: string): Promise<string> {
+export interface AddCommentOptions {
+  postOwnerId: string; // 알림 수신자를 정하려면 필요(호출부가 이미 post를 들고 있어 추가 조회 없이 넘겨준다)
+  parentCommentId?: string | null; // 답글이면 원댓글 id
+  parentAuthorId?: string | null; // 답글 대상 작성자(알림 수신자)
+}
+
+export async function addComment(
+  postId: string,
+  userId: string,
+  authorNickname: string,
+  content: string,
+  opts: AddCommentOptions
+): Promise<string> {
   const { valid, reason } = validateComment(content);
   if (!valid) throw new Error(reason);
 
@@ -42,6 +55,8 @@ export async function addComment(postId: string, userId: string, authorNickname:
     authorNickname,
     content: content.trim(),
     createdAt: Date.now(),
+    likeCount: 0,
+    parentCommentId: opts.parentCommentId ?? null,
   } satisfies Omit<Comment, 'id'>);
   batch.update(doc(db, 'posts', postId), { commentCount: increment(1) });
   stampRateLimit(batch, userId, 'comment');
@@ -54,6 +69,14 @@ export async function addComment(postId: string, userId: string, authorNickname:
   }
 
   bumpDailyStats({ commentsCount: 1 }).catch(() => {});
+
+  // 답글이면 원댓글 작성자에게, 아니면 글 작성자에게 알림을 보낸다(둘 다 자기 자신이면 자동으로 건너뜀).
+  if (opts.parentCommentId && opts.parentAuthorId) {
+    createNotification(opts.parentAuthorId, userId, 'comment_reply', postId, commentRef.id).catch(() => {});
+  } else {
+    createNotification(opts.postOwnerId, userId, 'post_comment', postId, commentRef.id).catch(() => {});
+  }
+
   return commentRef.id;
 }
 
@@ -73,7 +96,19 @@ export async function getComments(postId: string, after?: DocumentSnapshot | nul
   };
 }
 
+// 댓글을 지우면 그 댓글에 달린 답글과 좋아요도 함께 정리한다
+// (답글은 한 단계뿐이라 재귀 없이 한 번만 훑으면 된다).
 export async function deleteComment(commentId: string, postId: string): Promise<void> {
+  const repliesSnap = await getDocs(query(collection(db, commentsCol), where('parentCommentId', '==', commentId)));
+  let removedCount = 1;
+  for (const reply of repliesSnap.docs) {
+    await deleteDocsWhere('commentLikes', 'commentId', reply.id);
+    await deleteDoc(reply.ref);
+    removedCount++;
+  }
+  await deleteDocsWhere('commentLikes', 'commentId', commentId);
   await deleteDoc(doc(db, commentsCol, commentId));
-  await adjustCommentCount(postId, -1);
+  for (let i = 0; i < removedCount; i++) {
+    await adjustCommentCount(postId, -1);
+  }
 }

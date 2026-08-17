@@ -142,13 +142,58 @@ service cloud.firestore {
     // 댓글: 로그인 사용자는 읽기/작성 가능. 본인 또는 관리자(신고 처리)가 삭제.
     // 개수 제한이 없는 유일한 표면이라 15초 쿨다운을 규칙에서 강제한다.
     // (좋아요는 문서 ID가 `${postId}_${userId}`라 중복 자체가 불가능해 별도 제한이 필요 없다.)
+    // 답글(parentCommentId)도 같은 create 경로를 타므로 별도 규칙이 필요 없다.
+    function onlyCommentLikeCountChanged() {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.content == resource.data.content
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.likeCount >= 0
+        && (request.resource.data.likeCount - resource.data.likeCount == 1
+            || request.resource.data.likeCount - resource.data.likeCount == -1);
+    }
+
     match /comments/{commentId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && withinCooldown('comment', 15);
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && onlyCommentLikeCountChanged();
+    }
+
+    // 댓글 좋아요: posts/likes와 동일한 패턴. doc id `${commentId}_${userId}`로 중복 방지.
+    match /commentLikes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && likeId == request.resource.data.commentId + '_' + request.resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if false;
+    }
+
+    // 인앱 알림함: 받는 사람만 읽고, 상태(읽음 여부)만 바꿀 수 있다.
+    // 생성은 "행위자 본인 명의로, 자기 자신에게는 보낼 수 없음"만 강제한다 —
+    // 좋아요/댓글 자체의 정당성은 이미 posts/comments 규칙이 검증하므로 여기서 다시 보지 않는다.
+    function onlyReadFlagChanged() {
+      return request.resource.data.recipientId == resource.data.recipientId
+        && request.resource.data.actorId == resource.data.actorId
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.recipientId != request.auth.uid;
+      allow update: if isSignedIn() && resource.data.recipientId == request.auth.uid && onlyReadFlagChanged();
+      // 받은 사람은 자기 알림함을 정리할 수 있고, 보낸 사람(actor)은 계정 삭제 시
+      // 자신이 남긴 알림 흔적을 지울 수 있다(다른 사람 알림함을 대신 정리하는 게 아니라
+      // "내 행동으로 생긴 기록"만 지우는 것이라 안전하다).
+      allow delete: if isSignedIn()
+        && (resource.data.recipientId == request.auth.uid || resource.data.actorId == request.auth.uid);
     }
 
     // 일별 운영 통계 카운터: 원문 콘텐츠는 담지 않고 개수/uid만 담는다.

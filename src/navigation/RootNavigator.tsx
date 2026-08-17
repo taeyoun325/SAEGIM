@@ -16,6 +16,7 @@ import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import MyWritingsScreen from '../screens/MyWritingsScreen';
 import SavedPostsScreen from '../screens/SavedPostsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import SplashScreen from '../screens/SplashScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,6 +70,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
           <Stack.Screen name="MyWritings" component={MyWritingsScreen} options={{ title: '내 새김 관리' }} />
           <Stack.Screen name="SavedPosts" component={SavedPostsScreen} options={{ title: '저장한 글' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: '알림' }} />
         </Stack.Navigator>
       )}
     </NavigationContainer>

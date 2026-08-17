@@ -14,6 +14,7 @@ import { createUserProfile, getUserProfile } from '../services/userService';
 import { reserveNickname } from '../services/nicknameService';
 import { deleteAllUserContent } from '../services/accountService';
 import { logEvent } from '../services/statsService';
+import { getUnreadCount } from '../services/inboxService';
 import { UserProfile } from '../types/models';
 import { validateNickname } from '../utils/nickname';
 
@@ -33,6 +34,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  unreadNotifications: number;
+  refreshUnreadNotifications: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -48,17 +52,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         const p = await getUserProfile(firebaseUser.uid);
         setProfile(p);
+        getUnreadCount(firebaseUser.uid).then(setUnreadNotifications).catch(() => {});
         if (!appOpenLogged) {
           appOpenLogged = true;
           logEvent('app_open', firebaseUser.uid).catch(() => {});
         }
       } else {
         setProfile(null);
+        setUnreadNotifications(0);
       }
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  async function refreshUnreadNotifications() {
+    if (!user) return;
+    setUnreadNotifications(await getUnreadCount(user.uid));
+  }
 
   async function signUp(email: string, password: string, nickname: string) {
     const { valid, reason } = validateNickname(nickname);
@@ -115,7 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, deleteAccount, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        signUp,
+        signIn,
+        signOut,
+        deleteAccount,
+        refreshProfile,
+        unreadNotifications,
+        refreshUnreadNotifications,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -9,13 +9,18 @@ import { spacing } from '../constants/theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export default function SettingsGearButton() {
+interface Props {
+  // TopBarButtons처럼 이미 위치가 잡힌 행 안에 넣을 때는 자체 absolute 배치를 끈다.
+  inline?: boolean;
+}
+
+export default function SettingsGearButton({ inline }: Props) {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
 
   return (
     <TouchableOpacity
-      style={[styles.button, { top: insets.top + spacing.sm }]}
+      style={[styles.button, !inline && { position: 'absolute', top: insets.top + spacing.sm, right: spacing.md, zIndex: 10 }]}
       onPress={() => navigation.navigate('Settings')}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
@@ -25,11 +30,6 @@ export default function SettingsGearButton() {
 }
 
 const styles = StyleSheet.create({
-  button: {
-    position: 'absolute',
-    right: spacing.md,
-    zIndex: 10,
-    padding: spacing.xs,
-  },
+  button: { padding: spacing.xs },
   icon: { fontSize: 20 },
 });

@@ -15,7 +15,7 @@ import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BADGE_DEFS } from '../constants/badges';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
-import SettingsGearButton from '../components/SettingsGearButton';
+import TopBarButtons from '../components/TopBarButtons';
 import { RootStackParamList } from '../navigation/types';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
@@ -38,7 +38,7 @@ export default function ProfileScreen() {
 
       if (profile) {
         const totalLikes = list.reduce((sum, p) => sum + p.likeCount, 0);
-        const newBadges = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
+        const { newBadges } = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
         if (newBadges.length > 0) {
           await refreshProfile();
           const b = newBadges[0];
@@ -110,7 +110,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SettingsGearButton />
+      <TopBarButtons />
       <FlatList
       style={styles.container}
       data={posts}
@@ -161,6 +161,10 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>최고 기록</Text>
               </View>
             </View>
+
+            <Text style={styles.freezeNote}>
+              🧊 연속 기록 보호권 {profile.streakFreezes ?? 0}개 — 하루를 걸러도 스트릭이 안 끊겨요. 스트릭 배지를 딸 때마다 하나씩 생겨요.
+            </Text>
 
             <View style={styles.linkRow}>
               <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('MyWritings')}>
@@ -236,6 +240,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '700', color: colors.text },
   statLabel: { color: colors.textSoft, fontSize: 12, marginTop: spacing.xs },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: spacing.sm, marginBottom: spacing.sm },
+  freezeNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.md },
   linkRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   linkButton: {
     flex: 1,
