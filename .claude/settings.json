@@ -1,5 +1,33 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: Firebase (Authentication, Firestore, Hosting) — project referenced as post-it-665d6 / saegim",
+      "**Repository visibility**: not queryable here — assuming private per shipped default; note this repo's Firebase site is publicly deployed at saegim.web.app / post-it-665d6.web.app",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: Local env files (.env, .env.example) and serviceAccountKey.json — gitignored, not committed",
+      "**Default / protected branches**: not queryable here (gh visibility/rulesets/protected-branch checks unavailable)",
+      "**CI/CD deploy targets**: Firebase Hosting via `npm run deploy:web` (saegim.web.app, post-it-665d6.web.app); GitHub Pages host taeyoun325.github.io seen in usage",
+      "**Network posture**: None configured",
+      "**Source control**: https://github.com/taeyoun325/SAEGIM.git (origin) only — no additional orgs configured",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: .env, .env.example, serviceAccountKey.json, and any *.key files — Firebase credentials and admin service-account material; share only with project maintainers",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (React Native / Expo + Firebase app: SAEGIM)",
+      "**Trusted repo**: C:\\Users\\kunia\\Desktop\\POST IT (working directory) and its remote https://github.com/taeyoun325/SAEGIM.git — visibility not confirmed, treat as private by default; confidential material fine here, but secrets/regulated data never cleared by visibility alone",
+      "**Org-specific CLIs**: None configured (firebase CLI used, but not org-specific)"
+    ]
   }
 }
