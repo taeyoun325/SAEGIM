@@ -11,6 +11,7 @@ import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
 import { updateUserProfile } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
+import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BADGE_DEFS } from '../constants/badges';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
@@ -34,10 +35,21 @@ export default function ProfileScreen() {
     try {
       const list = await getUserPublicPosts(user.uid);
       setPosts(list);
+
+      if (profile) {
+        const totalLikes = list.reduce((sum, p) => sum + p.likeCount, 0);
+        const newBadges = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
+        if (newBadges.length > 0) {
+          await refreshProfile();
+          const b = newBadges[0];
+          await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
+        }
+      }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile?.earnedBadgeIds]);
 
   useFocusEffect(
     useCallback(() => {

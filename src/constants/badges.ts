@@ -1,4 +1,4 @@
-export type BadgeType = 'streak' | 'writing';
+export type BadgeType = 'streak' | 'writing' | 'likes';
 
 export interface BadgeDef {
   id: string;
@@ -20,4 +20,8 @@ export const BADGE_DEFS: BadgeDef[] = [
   { id: 'writing_10', emoji: '📖', name: '10회 새김', description: '생각을 10번 새겼어요', type: 'writing', threshold: 10 },
   { id: 'writing_30', emoji: '📚', name: '30회 새김', description: '생각을 30번 새겼어요', type: 'writing', threshold: 30 },
   { id: 'writing_100', emoji: '🏆', name: '100회 새김', description: '생각을 100번 새겼어요', type: 'writing', threshold: 100 },
+  { id: 'likes_1', emoji: '💛', name: '첫 공감', description: '내 글이 처음 좋아요를 받았어요', type: 'likes', threshold: 1 },
+  { id: 'likes_10', emoji: '⭐', name: '인기 새김', description: '내 글이 좋아요 10개를 받았어요', type: 'likes', threshold: 10 },
+  { id: 'likes_50', emoji: '🌟', name: '사랑받는 새김', description: '내 글이 좋아요 50개를 받았어요', type: 'likes', threshold: 50 },
+  { id: 'likes_100', emoji: '👑', name: '새김의 왕', description: '내 글이 좋아요 100개를 받았어요', type: 'likes', threshold: 100 },
 ];

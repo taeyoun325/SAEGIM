@@ -26,6 +26,8 @@ import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
 import SettingsGearButton from '../components/SettingsGearButton';
 import ShareCard from '../components/ShareCard';
+import ShareThemeModal from '../components/ShareThemeModal';
+import { ShareTheme, DEFAULT_SHARE_THEME } from '../constants/shareThemes';
 import { shareAsImage } from '../services/shareService';
 
 export default function TodayScreen() {
@@ -40,6 +42,9 @@ export default function TodayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [shareTheme, setShareTheme] = useState<ShareTheme>(DEFAULT_SHARE_THEME);
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
+  const [pendingShare, setPendingShare] = useState(false);
   const shareCardRef = useRef<View>(null);
 
   const load = useCallback(async () => {
@@ -168,14 +173,24 @@ export default function TodayScreen() {
     }
   }
 
-  async function handleShare() {
+  function handleShare() {
     if (!writing) return;
-    try {
-      await shareAsImage(shareCardRef, `saegim-${writing.id}`);
-    } catch (e) {
-      await notify('오류', '공유 이미지를 만들지 못했어요.');
-    }
+    setThemeModalVisible(true);
   }
+
+  function handleThemeSelect(theme: ShareTheme) {
+    setShareTheme(theme);
+    setThemeModalVisible(false);
+    setPendingShare(true);
+  }
+
+  useEffect(() => {
+    if (!pendingShare || !writing) return;
+    setPendingShare(false);
+    shareAsImage(shareCardRef, `saegim-${writing.id}`).catch(async () => {
+      await notify('오류', '공유 이미지를 만들지 못했어요.');
+    });
+  }, [pendingShare, writing, notify]);
 
   async function handleUnpublish() {
     if (!writing || !writing.postId || !user) return;
@@ -291,9 +306,14 @@ export default function TodayScreen() {
       </ScrollView>
       {writing && (
         <View style={styles.offscreen} pointerEvents="none">
-          <ShareCard ref={shareCardRef} lines={writing.lines} createdAt={writing.createdAt} />
+          <ShareCard ref={shareCardRef} lines={writing.lines} createdAt={writing.createdAt} theme={shareTheme} />
         </View>
       )}
+      <ShareThemeModal
+        visible={themeModalVisible}
+        onSelect={handleThemeSelect}
+        onClose={() => setThemeModalVisible(false)}
+      />
     </View>
   );
 }

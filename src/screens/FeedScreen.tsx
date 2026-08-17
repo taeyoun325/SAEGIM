@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import Text from '../components/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +22,7 @@ export default function FeedScreen() {
   const blockedIds = profile?.blockedUserIds ?? [];
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [topPosts, setTopPosts] = useState<Post[]>([]);
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [sort, setSort] = useState<FeedSort>('latest');
   const [loading, setLoading] = useState(true);
@@ -35,9 +36,13 @@ export default function FeedScreen() {
       const p = await getTodayPrompt();
       setPrompt(p);
       if (p) {
-        const page = await getPromptFeed(p.id, null, currentSort);
+        const [page, popularPage] = await Promise.all([
+          getPromptFeed(p.id, null, currentSort),
+          currentSort === 'popular' ? Promise.resolve(null) : getPromptFeed(p.id, null, 'popular'),
+        ]);
         setPosts(page.posts);
         setLastDoc(page.lastDoc);
+        setTopPosts((popularPage ?? page).posts.slice(0, 3));
       }
     } catch (e) {
       setError('피드를 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
@@ -63,6 +68,13 @@ export default function FeedScreen() {
     if (next === sort) return;
     setSort(next);
     setLoading(true);
+  }
+
+  function handleRandomBrowse() {
+    const visible = posts.filter((p) => !blockedIds.includes(p.userId));
+    if (visible.length === 0) return;
+    const pick = visible[Math.floor(Math.random() * visible.length)];
+    navigation.navigate('PostDetail', { postId: pick.id });
   }
 
   async function loadMore() {
@@ -100,7 +112,33 @@ export default function FeedScreen() {
             <TouchableOpacity onPress={() => changeSort('popular')} style={[styles.sortChip, sort === 'popular' && styles.sortChipActive]}>
               <Text style={[styles.sortText, sort === 'popular' && styles.sortTextActive]}>인기순</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={handleRandomBrowse} style={styles.diceButton}>
+              <Text style={styles.diceButtonText}>🎲 랜덤 둘러보기</Text>
+            </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {topPosts.filter((p) => !blockedIds.includes(p.userId)).length > 0 && (
+        <View style={styles.topSection}>
+          <Text style={styles.topSectionTitle}>🏆 오늘의 인기글</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topRow}>
+            {topPosts
+              .filter((p) => !blockedIds.includes(p.userId))
+              .map((p, i) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={styles.topCard}
+                  onPress={() => navigation.navigate('PostDetail', { postId: p.id })}
+                >
+                  <Text style={styles.topRank}>{['🥇', '🥈', '🥉'][i]}</Text>
+                  <Text style={styles.topCardLine} numberOfLines={3}>
+                    {p.lines.join(' ')}
+                  </Text>
+                  <Text style={styles.topCardLikes}>♥ {p.likeCount}</Text>
+                </TouchableOpacity>
+              ))}
+          </ScrollView>
         </View>
       )}
       {error && (
@@ -158,11 +196,25 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     marginTop: spacing.xs,
   },
-  sortRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  sortRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, alignItems: 'center' },
   sortChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border },
   sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   sortText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
   sortTextActive: { color: '#fff' },
+  diceButton: { marginLeft: 'auto', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  diceButtonText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
+  topSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  topSectionTitle: { color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
+  topRow: { gap: spacing.sm },
+  topCard: {
+    width: 140,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  topRank: { fontSize: 18, marginBottom: spacing.xs },
+  topCardLine: { color: colors.text, fontSize: 13, lineHeight: 18 },
+  topCardLikes: { color: colors.textSoft, fontSize: 11, marginTop: spacing.sm },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   error: { color: colors.danger, textAlign: 'center', marginBottom: spacing.sm },
   errorRow: { alignItems: 'center', paddingHorizontal: spacing.lg },
