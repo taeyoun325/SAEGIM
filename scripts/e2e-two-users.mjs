@@ -255,6 +255,29 @@ async function main() {
     check('좋아요 수 임의 조작 차단', true);
   }
 
+  // ±1 제약만 있으면 "좋아요를 누르지 않고 1씩 계속 올리는" 우회가 가능하다.
+  // A는 이 글에 좋아요를 누른 적이 없으므로, 좋아요 문서 없이 +1 하는 시도는 막혀야 한다.
+  {
+    const before = (await getDoc(doc(A.db, 'posts', postRef.id))).data().likeCount || 0;
+    try {
+      await updateDoc(doc(A.db, 'posts', postRef.id), { likeCount: before + 1 });
+      check('좋아요 없이 카운트 증가 차단', false, `likeCount ${before}→${before + 1} (취약)`);
+    } catch {
+      check('좋아요 없이 카운트 증가 차단', true);
+    }
+  }
+
+  // 반대로 남의 좋아요를 카운트에서만 빼는 것도 막혀야 한다.
+  {
+    const before = (await getDoc(doc(A.db, 'posts', postRef.id))).data().likeCount || 0;
+    try {
+      await updateDoc(doc(A.db, 'posts', postRef.id), { likeCount: Math.max(0, before - 1) });
+      check('좋아요 없이 카운트 감소 차단', false, `likeCount ${before}→${before - 1} (취약)`);
+    } catch {
+      check('좋아요 없이 카운트 감소 차단', true);
+    }
+  }
+
   // --- B가 신고 ---
   await addDoc(collection(B.db, 'reports'), {
     targetType: 'post', targetId: postRef.id, reporterId: ub.uid,
