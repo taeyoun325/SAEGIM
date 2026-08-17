@@ -23,10 +23,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 글감: 서버(Cloud Functions/Admin SDK)만 생성/수정. 클라이언트는 읽기만.
+    // 글감: 관리자만 생성/수정할 수 있다(관리자 대시보드에서 추가). 클라이언트는 읽기만.
     match /prompts/{promptId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // 사용자 프로필: 본인만 쓰기, 로그인한 사용자는 공개 프로필 필드를 읽을 수 있음.
@@ -97,6 +97,16 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && likeId == request.resource.data.postId + '_' + request.resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // 저장(북마크): 본인 소유 저장만 생성/삭제, doc id는 `${postId}_${userId}` 형식으로 중복 방지.
+    match /saves/{saveId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && saveId == request.resource.data.postId + '_' + request.resource.data.userId;
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if false;
     }

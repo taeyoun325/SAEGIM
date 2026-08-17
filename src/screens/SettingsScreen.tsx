@@ -8,17 +8,27 @@ import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { isReminderEnabled, enableDailyReminder, disableDailyReminder } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
+import { updateUserProfile } from '../services/userService';
+import { PROMPT_CATEGORIES } from '../constants/promptPool';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SettingsScreen() {
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
   const [admin, setAdmin] = useState(false);
+
+  async function togglePreferredCategory(category: string) {
+    if (!user || !profile) return;
+    const current = profile.preferredCategories ?? [];
+    const next = current.includes(category) ? current.filter((c) => c !== category) : [...current, category];
+    await updateUserProfile(user.uid, { preferredCategories: next });
+    await refreshProfile();
+  }
 
   useEffect(() => {
     isReminderEnabled().then(setReminderOn);
@@ -96,6 +106,27 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>선호 글감 카테고리</Text>
+          <Text style={styles.categoryHint}>나중에 맞춤 글감 추천에 활용돼요.</Text>
+          <View style={styles.categoryRow}>
+            {PROMPT_CATEGORIES.map((c) => {
+              const selected = profile?.preferredCategories?.includes(c);
+              return (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.categoryChip, selected && styles.categoryChipSelected]}
+                  onPress={() => togglePreferredCategory(c)}
+                >
+                  <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{c}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
         <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('BlockedUsers')}>
           <Text style={styles.rowButtonText}>차단한 사용자 목록</Text>
         </TouchableOpacity>
@@ -149,4 +180,17 @@ const styles = StyleSheet.create({
   rowButtonText: { color: colors.text, fontSize: 15 },
   adminText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   dangerText: { color: colors.danger, fontSize: 15 },
+  categorySection: { paddingVertical: spacing.md },
+  categoryHint: { color: colors.textSoft, fontSize: 12, marginTop: 2, marginBottom: spacing.sm },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  categoryChip: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  categoryChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryChipText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
+  categoryChipTextSelected: { color: '#fff' },
 });

@@ -12,6 +12,7 @@ import {
   startAfter,
   updateDoc,
   where,
+  writeBatch,
   DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -20,6 +21,27 @@ import { linkWritingToPost, updateWritingVisibility } from './writingService';
 import { FEED_PAGE_SIZE } from '../constants/config';
 
 const postsCol = 'posts';
+
+// 특정 필드=값 조건의 문서를 전부 지운다. Firestore 배치는 한 번에 최대 500개까지 처리한다.
+export async function deleteDocsWhere(collectionName: string, field: string, value: string): Promise<number> {
+  const snap = await getDocs(query(collection(db, collectionName), where(field, '==', value)));
+  if (snap.empty) return 0;
+  const chunks: (typeof snap.docs)[] = [];
+  for (let i = 0; i < snap.docs.length; i += 450) chunks.push(snap.docs.slice(i, i + 450));
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    chunk.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return snap.size;
+}
+
+// 게시물과 연결된 댓글/좋아요/저장 데이터를 함께 지운다. 게시물 삭제(본인/관리자) 경로에서 공용으로 쓴다.
+export async function deletePostRelatedContent(postId: string): Promise<void> {
+  await deleteDocsWhere('comments', 'postId', postId);
+  await deleteDocsWhere('likes', 'postId', postId);
+  await deleteDocsWhere('saves', 'postId', postId);
+}
 
 export async function publishWriting(writing: Writing): Promise<string> {
   const now = Date.now();
@@ -31,6 +53,7 @@ export async function publishWriting(writing: Writing): Promise<string> {
     createdAt: now,
     likeCount: 0,
     commentCount: 0,
+    ...(writing.category ? { category: writing.category } : {}),
   } satisfies Omit<Post, 'id'>);
   await updateWritingVisibility(writing.id, 'public');
   await linkWritingToPost(writing.id, postRef.id);
@@ -81,6 +104,7 @@ export async function getUserPublicPosts(userId: string): Promise<Post[]> {
 }
 
 export async function deletePost(postId: string, writingId: string): Promise<void> {
+  await deletePostRelatedContent(postId);
   await deleteDoc(doc(db, postsCol, postId));
   await updateWritingVisibility(writingId, 'private');
   await linkWritingToPost(writingId, null);

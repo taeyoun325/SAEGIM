@@ -21,4 +21,6 @@ export type RootStackParamList = {
   AdminReports: undefined;
   AdminDashboard: undefined;
   Settings: undefined;
+  MyWritings: undefined;
+  SavedPosts: undefined;
 };

@@ -1,0 +1,304 @@
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import Text from '../components/Text';
+import TextInput from '../components/TextInput';
+import { useFocusEffect } from '@react-navigation/native';
+import { colors, spacing, radius } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
+import { Writing } from '../types/models';
+import { getMyWritings, updateWritingContent, deleteWriting, validateLines } from '../services/writingService';
+import { deletePost, updatePostContent } from '../services/postService';
+import { adjustPublicPostCount, adjustWritingCount } from '../services/userService';
+import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
+import { formatDisplayDate, timestampToDateString } from '../utils/date';
+
+export default function MyWritingsScreen() {
+  const { user, refreshProfile } = useAuth();
+  const { confirm, notify } = useDialog();
+  const [writings, setWritings] = useState<Writing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Writing | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      setWritings(await getMyWritings(user.uid));
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim();
+    if (!q) return writings;
+    return writings.filter((w) => w.lines.some((l) => l.includes(q)));
+  }, [writings, query]);
+
+  const stats = useMemo(() => {
+    if (writings.length === 0) return null;
+    const monthCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+    const days = new Set<string>();
+    for (const w of writings) {
+      const d = timestampToDateString(w.createdAt);
+      days.add(d);
+      const month = d.slice(0, 7);
+      monthCounts[month] = (monthCounts[month] ?? 0) + 1;
+      if (w.category) categoryCounts[w.category] = (categoryCounts[w.category] ?? 0) + 1;
+    }
+    const topMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0];
+    const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0];
+    return {
+      total: writings.length,
+      dayCount: days.size,
+      topMonth: topMonth ? `${topMonth[0].replace('-', '년 ')}월` : null,
+      topCategory: topCategory ? topCategory[0] : null,
+    };
+  }, [writings]);
+
+  function openDetail(w: Writing) {
+    setSelected(w);
+    setEditing(false);
+    setEditText(w.lines.join('\n'));
+  }
+
+  function closeDetail() {
+    setSelected(null);
+    setEditing(false);
+  }
+
+  async function handleSaveEdit() {
+    if (!selected) return;
+    const lines = editText.split('\n');
+    const { valid, reason } = validateLines(lines);
+    if (!valid) {
+      await notify('오류', reason ?? '내용을 확인해주세요.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateWritingContent(selected.id, lines);
+      if (selected.postId) await updatePostContent(selected.postId, lines);
+      const cleanLines = lines.filter((l) => l.trim().length > 0);
+      const updated = { ...selected, lines: cleanLines };
+      setWritings((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setSelected(updated);
+      setEditing(false);
+    } catch (e) {
+      await notify('오류', '수정에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selected || !user) return;
+    const ok = await confirm({
+      title: '이 글을 삭제할까요?',
+      message: selected.visibility === 'public' ? '공개된 글이라면 다른 사람의 피드에서도 사라져요.' : undefined,
+      confirmLabel: '삭제하기',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      if (selected.postId) {
+        await deletePost(selected.postId, selected.id);
+        await adjustPublicPostCount(user.uid, -1);
+      } else {
+        await deleteWriting(selected.id);
+      }
+      await adjustWritingCount(user.uid, -1);
+      setWritings((prev) => prev.filter((w) => w.id !== selected.id));
+      await refreshProfile();
+      closeDetail();
+    } catch (e) {
+      await notify('오류', '삭제에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.title}>내 새김 관리</Text>
+            {stats && (
+              <View style={styles.statsCard}>
+                <Text style={styles.statsHeadline}>지금까지 {stats.total}개의 생각을 남겼어요.</Text>
+                <Text style={styles.statsLine}>작성한 날짜 수 {stats.dayCount}일</Text>
+                {stats.topMonth && <Text style={styles.statsLine}>가장 많이 쓴 달 {stats.topMonth}</Text>}
+                {stats.topCategory && <Text style={styles.statsLine}>가장 많이 쓴 글감 카테고리 "{stats.topCategory}"</Text>}
+              </View>
+            )}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="내용 검색"
+              placeholderTextColor={colors.textSoft}
+              value={query}
+              onChangeText={setQuery}
+            />
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>{query ? '검색 결과가 없어요.' : '아직 새긴 생각이 없어요.'}</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.row} onPress={() => openDetail(item)}>
+            <View style={styles.rowHeader}>
+              <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
+              <Text style={item.visibility === 'public' ? styles.publicBadge : styles.privateBadge}>
+                {item.visibility === 'public' ? '🌐 공개' : '🔒 비공개'}
+              </Text>
+            </View>
+            <Text style={styles.rowPreview} numberOfLines={2}>
+              {item.lines.join(' · ')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+
+      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={closeDetail}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }}>
+              {selected && (
+                <>
+                  <Text style={styles.sheetDate}>{formatDisplayDate(timestampToDateString(selected.createdAt))}</Text>
+                  {editing ? (
+                    <>
+                      <TextInput
+                        style={styles.editInput}
+                        value={editText}
+                        onChangeText={setEditText}
+                        maxLength={WRITING_TOTAL_MAX_LENGTH}
+                        multiline
+                        textAlignVertical="top"
+                      />
+                      <Text style={styles.counter}>{editText.length}/{WRITING_TOTAL_MAX_LENGTH}</Text>
+                      <View style={styles.actionsRow}>
+                        <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setEditing(false)} disabled={busy}>
+                          <Text style={styles.buttonOutlineText}>취소</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.button} onPress={handleSaveEdit} disabled={busy}>
+                          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>저장</Text>}
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.contentCard}>
+                        {selected.lines.map((l, i) => (
+                          <Text key={i} style={styles.contentLine}>{l}</Text>
+                        ))}
+                      </View>
+                      <View style={styles.actionsRow}>
+                        <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setEditing(true)} disabled={busy}>
+                          <Text style={styles.buttonOutlineText}>수정</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={handleDelete} disabled={busy}>
+                          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>삭제</Text>}
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
+              <TouchableOpacity style={styles.closeButton} onPress={closeDetail}>
+                <Text style={styles.closeButtonText}>닫기</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  list: { padding: spacing.lg, paddingBottom: spacing.xl },
+  title: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: spacing.md },
+  statsCard: { backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  statsHeadline: { color: colors.primary, fontWeight: '700', fontSize: 15, marginBottom: spacing.xs },
+  statsLine: { color: colors.text, fontSize: 13, marginTop: 2 },
+  searchInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    color: colors.text,
+  },
+  row: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  rowHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+  rowDate: { color: colors.textSoft, fontSize: 12 },
+  publicBadge: { color: colors.success, fontSize: 12, fontWeight: '600' },
+  privateBadge: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  rowPreview: { color: colors.text, fontSize: 15, lineHeight: 22 },
+  empty: { paddingVertical: spacing.xl, alignItems: 'center' },
+  emptyText: { color: colors.textSoft },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: '85%' },
+  sheetDate: { fontSize: 20, fontWeight: '800', color: colors.primary, marginBottom: spacing.md },
+  contentCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
+  contentLine: { color: colors.text, fontSize: 16, lineHeight: 24 },
+  editInput: {
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    minHeight: 120,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.text,
+  },
+  counter: { color: colors.textSoft, fontSize: 12, textAlign: 'right', marginTop: spacing.xs },
+  actionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  button: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  buttonOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary },
+  buttonOutlineText: { color: colors.primary, fontSize: 15, fontWeight: '600' },
+  buttonDanger: { backgroundColor: colors.danger },
+  closeButton: { marginTop: spacing.lg, alignItems: 'center', paddingVertical: spacing.md },
+  closeButtonText: { color: colors.textSoft, fontWeight: '600' },
+});

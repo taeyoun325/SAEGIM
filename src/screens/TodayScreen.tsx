@@ -39,6 +39,7 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
   const shareCardRef = useRef<View>(null);
 
   const load = useCallback(async () => {
@@ -55,7 +56,10 @@ export default function TodayScreen() {
           setText(w.lines.join('\n'));
         } else {
           const draft = await loadDraft(user.uid, p.id);
-          if (draft) setText(draft.join('\n'));
+          if (draft) {
+            setText(draft.join('\n'));
+            setDraftRestored(true);
+          }
         }
       }
     } catch (e) {
@@ -118,7 +122,7 @@ export default function TodayScreen() {
       let newBadges: Awaited<ReturnType<typeof evaluateAndAwardBadges>> = [];
 
       if (!currentWriting) {
-        const id = await createWriting(user.uid, prompt.id, lines, 'private');
+        const id = await createWriting(user.uid, prompt.id, lines, 'private', prompt.category);
         const updatedProfile = await recordTodayWriting(user.uid, todayDateString());
         if (updatedProfile) {
           newBadges = await evaluateAndAwardBadges(user.uid, updatedProfile);
@@ -149,6 +153,7 @@ export default function TodayScreen() {
 
       setWriting(currentWriting);
       await clearDraft(user.uid, prompt.id);
+      setDraftRestored(false);
       await refreshProfile();
       if (newBadges.length > 0) {
         const b = newBadges[0];
@@ -216,7 +221,14 @@ export default function TodayScreen() {
 
       {!prompt ? (
         <View style={styles.card}>
-          <Text style={styles.emptyText}>오늘의 글감을 준비하고 있어요.{'\n'}잠시 후 다시 확인해주세요.</Text>
+          <Text style={styles.emptyText}>
+            {error ?? '오늘의 글감을 준비하고 있어요.\n잠시 후 다시 확인해주세요.'}
+          </Text>
+          {error && (
+            <TouchableOpacity style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryButtonText}>다시 시도</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <>
@@ -224,6 +236,7 @@ export default function TodayScreen() {
             <View style={styles.promptCard}>
               <Text style={styles.promptLabel}>오늘의 글감</Text>
               <Text style={styles.promptTitle}>{prompt.title}</Text>
+              {prompt.category && <Text style={styles.categoryChip}>{prompt.category}</Text>}
             </View>
             {!revealed && <PromptSticker onReveal={handleReveal} />}
           </View>
@@ -238,6 +251,7 @@ export default function TodayScreen() {
           )}
 
           <Text style={styles.guide}>이 글감을 보고 떠오른 생각을 새겨보세요.</Text>
+          {draftRestored && <Text style={styles.draftBanner}>📝 작성 중이던 내용을 불러왔어요.</Text>}
 
           <TextInput
             style={styles.writeInput}
@@ -291,15 +305,29 @@ const styles = StyleSheet.create({
   appName: { fontSize: 20, fontWeight: '800', color: colors.primary, marginBottom: spacing.md },
   card: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg },
   emptyText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22 },
+  retryButton: { marginTop: spacing.md, alignSelf: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
+  retryButtonText: { color: colors.primary, fontWeight: '600' },
   promptWrapper: { marginBottom: spacing.md },
   promptCard: { backgroundColor: colors.accentSoft, borderRadius: radius.lg, padding: spacing.lg, minHeight: 150, justifyContent: 'center' },
   promptLabel: { color: colors.textSoft, fontSize: 13, marginBottom: spacing.xs },
   promptTitle: { color: colors.primary, fontSize: 26, fontWeight: '800' },
+  categoryChip: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    backgroundColor: colors.card,
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginTop: spacing.sm,
+  },
   doneBadge: { marginBottom: spacing.md },
   doneBadgeText: { color: colors.success, fontWeight: '600' },
   shareLink: { color: colors.primary, fontWeight: '600', marginTop: spacing.xs },
   offscreen: { position: 'absolute', top: 0, left: -9999 },
   guide: { color: colors.textSoft, marginBottom: spacing.md },
+  draftBanner: { color: colors.primary, fontSize: 12, marginBottom: spacing.sm },
   writeInput: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,

@@ -24,7 +24,10 @@ const ShareCard = forwardRef<View, Props>(({ lines, createdAt }, ref) => {
       </View>
       <View style={styles.footer}>
         <Image source={require('../assets/mascot-share.png')} style={styles.mascot} resizeMode="contain" />
-        <Text style={styles.date}>{formatDisplayDate(timestampToDateString(createdAt))}</Text>
+        <View style={styles.footerText}>
+          <Text style={styles.date}>{formatDisplayDate(timestampToDateString(createdAt))}</Text>
+          <Text style={styles.url}>saegim.web.app</Text>
+        </View>
       </View>
     </View>
   );
@@ -49,5 +52,7 @@ const styles = StyleSheet.create({
   line: { fontFamily: fonts.regular, color: colors.text, fontSize: 22, lineHeight: 34 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mascot: { width: 56, height: 56 },
+  footerText: { alignItems: 'flex-end' },
   date: { color: colors.textSoft, fontSize: 13 },
+  url: { color: colors.textSoft, fontSize: 11, marginTop: 2 },
 });

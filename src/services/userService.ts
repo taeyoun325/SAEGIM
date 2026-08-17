@@ -17,6 +17,9 @@ export async function createUserProfile(uid: string, nickname: string): Promise<
     lastWritingDate: null,
     blockedUserIds: [],
     earnedBadgeIds: [],
+    bio: null,
+    bestStreak: 0,
+    preferredCategories: [],
   };
   await setDoc(doc(db, usersCol, uid), profile);
   bumpDailyStats({ newSignups: 1 }).catch(() => {});
@@ -57,6 +60,7 @@ export async function recordTodayWriting(uid: string, todayDateStr: string): Pro
   const updated = {
     writingCount: profile.writingCount + 1,
     streakCount: nextStreak,
+    bestStreak: Math.max(profile.bestStreak ?? 0, nextStreak),
     lastWritingDate: todayDateStr,
   };
   await updateDoc(doc(db, usersCol, uid), updated);
@@ -68,4 +72,10 @@ export async function adjustPublicPostCount(uid: string, delta: 1 | -1): Promise
   const profile = await getUserProfile(uid);
   if (!profile) return;
   await updateDoc(doc(db, usersCol, uid), { publicPostCount: Math.max(0, profile.publicPostCount + delta) });
+}
+
+export async function adjustWritingCount(uid: string, delta: 1 | -1): Promise<void> {
+  const profile = await getUserProfile(uid);
+  if (!profile) return;
+  await updateDoc(doc(db, usersCol, uid), { writingCount: Math.max(0, profile.writingCount + delta) });
 }

@@ -92,6 +92,7 @@ export default function FeedScreen() {
         <View style={styles.header}>
           <Text style={styles.headerLabel}>오늘의 글감</Text>
           <Text style={styles.headerTitle}>{prompt.title}</Text>
+          {prompt.category && <Text style={styles.categoryChip}>{prompt.category}</Text>}
           <View style={styles.sortRow}>
             <TouchableOpacity onPress={() => changeSort('latest')} style={[styles.sortChip, sort === 'latest' && styles.sortChipActive]}>
               <Text style={[styles.sortText, sort === 'latest' && styles.sortTextActive]}>최신순</Text>
@@ -102,7 +103,14 @@ export default function FeedScreen() {
           </View>
         </View>
       )}
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <View style={styles.errorRow}>
+          <Text style={styles.error}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => load(sort)}>
+            <Text style={styles.retryButtonText}>다시 시도</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <FlatList
         data={posts.filter((p) => !blockedIds.includes(p.userId))}
         keyExtractor={(item) => item.id}
@@ -139,6 +147,17 @@ const styles = StyleSheet.create({
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
   headerLabel: { color: colors.textSoft, fontSize: 13 },
   headerTitle: { color: colors.primary, fontSize: 22, fontWeight: '800' },
+  categoryChip: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    backgroundColor: colors.accentSoft,
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginTop: spacing.xs,
+  },
   sortRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   sortChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border },
   sortChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
@@ -146,6 +165,9 @@ const styles = StyleSheet.create({
   sortTextActive: { color: '#fff' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   error: { color: colors.danger, textAlign: 'center', marginBottom: spacing.sm },
+  errorRow: { alignItems: 'center', paddingHorizontal: spacing.lg },
+  retryButton: { marginBottom: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
+  retryButtonText: { color: colors.primary, fontWeight: '600' },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22 },
 });

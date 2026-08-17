@@ -1,12 +1,16 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import Text from '../components/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
+import { updateUserProfile } from '../services/userService';
+import { uploadProfileImage } from '../services/storageService';
 import { BADGE_DEFS } from '../constants/badges';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
@@ -17,10 +21,12 @@ import { formatDisplayDate, timestampToDateString } from '../utils/date';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProfileScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const { prompt, notify } = useDialog();
   const navigation = useNavigation<Nav>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -38,6 +44,49 @@ export default function ProfileScreen() {
       load();
     }, [load])
   );
+
+  async function handlePickImage() {
+    if (!user) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      await notify('권한이 필요해요', '사진 접근 권한을 허용해주세요.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadProfileImage(user.uid, result.assets[0].uri);
+      await updateUserProfile(user.uid, { photoURL: url });
+      await refreshProfile();
+    } catch (e) {
+      await notify('오류', '프로필 사진 업로드에 실패했어요.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handleEditBio() {
+    if (!user) return;
+    const next = await prompt({
+      title: '자기소개',
+      placeholder: '나를 한 줄로 소개해보세요',
+      confirmLabel: '저장',
+    });
+    if (next === null) return;
+    try {
+      await updateUserProfile(user.uid, { bio: next.trim() || null });
+      await refreshProfile();
+    } catch (e) {
+      await notify('오류', '자기소개 저장에 실패했어요.');
+    }
+  }
 
   if (!profile) {
     return (
@@ -57,8 +106,31 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.nickname}>{profile.nickname}</Text>
-            <Text style={styles.joined}>가입일 {formatDisplayDate(timestampToDateString(profile.createdAt))}</Text>
+            <View style={styles.identityRow}>
+              <TouchableOpacity onPress={handlePickImage} disabled={uploadingPhoto} style={styles.avatarWrap}>
+                {profile.photoURL ? (
+                  <Image source={{ uri: profile.photoURL }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarInitial}>{profile.nickname.charAt(0)}</Text>
+                  </View>
+                )}
+                <View style={styles.avatarBadge}>
+                  {uploadingPhoto ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.avatarBadgeText}>📷</Text>}
+                </View>
+              </TouchableOpacity>
+              <View style={styles.identityText}>
+                <Text style={styles.nickname}>{profile.nickname}</Text>
+                <Text style={styles.joined}>가입일 {formatDisplayDate(timestampToDateString(profile.createdAt))}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity onPress={handleEditBio} style={styles.bioRow}>
+              <Text style={profile.bio ? styles.bioText : styles.bioPlaceholder} numberOfLines={2}>
+                {profile.bio || '자기소개를 추가해보세요'}
+              </Text>
+            </TouchableOpacity>
+
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{profile.writingCount}</Text>
@@ -72,6 +144,19 @@ export default function ProfileScreen() {
                 <Text style={styles.statValue}>🔥 {profile.streakCount}</Text>
                 <Text style={styles.statLabel}>연속 새김</Text>
               </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>🏅 {profile.bestStreak ?? 0}</Text>
+                <Text style={styles.statLabel}>최고 기록</Text>
+              </View>
+            </View>
+
+            <View style={styles.linkRow}>
+              <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('MyWritings')}>
+                <Text style={styles.linkButtonText}>📖 내 새김 관리</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('SavedPosts')}>
+                <Text style={styles.linkButtonText}>🔖 저장한 글</Text>
+              </TouchableOpacity>
             </View>
 
             <Text style={styles.sectionTitle}>배지</Text>
@@ -109,13 +194,47 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { paddingTop: spacing.lg },
+  identityRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 64, height: 64, borderRadius: 32 },
+  avatarPlaceholder: { backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 24, fontWeight: '800', color: colors.primary },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  avatarBadgeText: { fontSize: 11 },
+  identityText: { marginLeft: spacing.md, flex: 1 },
   nickname: { fontSize: 24, fontWeight: '800', color: colors.primary },
   joined: { color: colors.textSoft, marginTop: spacing.xs },
+  bioRow: { marginTop: spacing.md },
+  bioText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  bioPlaceholder: { color: colors.textSoft, fontSize: 14, fontStyle: 'italic' },
   statsRow: { flexDirection: 'row', marginTop: spacing.lg, marginBottom: spacing.lg },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '700', color: colors.text },
   statLabel: { color: colors.textSoft, fontSize: 12, marginTop: spacing.xs },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: spacing.sm, marginBottom: spacing.sm },
+  linkRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  linkButton: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  linkButtonText: { color: colors.primary, fontWeight: '600', fontSize: 13 },
   badgeRow: { gap: spacing.sm, paddingBottom: spacing.md },
   badgeChip: {
     alignItems: 'center',

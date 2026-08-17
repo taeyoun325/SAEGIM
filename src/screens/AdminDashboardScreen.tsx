@@ -1,9 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Text from '../components/Text';
+import TextInput from '../components/TextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
 import { getTodayStats, getRevisitRate } from '../services/adminService';
+import { createPrompt } from '../services/promptService';
+import { PROMPT_CATEGORIES } from '../constants/promptPool';
+import { useDialog } from '../context/DialogContext';
 import { DailyStats } from '../types/models';
 
 interface Revisit {
@@ -13,11 +17,16 @@ interface Revisit {
 }
 
 export default function AdminDashboardScreen() {
+  const { notify } = useDialog();
   const [stats, setStats] = useState<DailyStats | null>(null);
   const [revisit7, setRevisit7] = useState<Revisit | null>(null);
   const [revisit30, setRevisit30] = useState<Revisit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState(PROMPT_CATEGORIES[0]);
+  const [savingPrompt, setSavingPrompt] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,6 +48,28 @@ export default function AdminDashboardScreen() {
       load();
     }, [load])
   );
+
+  async function handleAddPrompt() {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate.trim())) {
+      await notify('오류', '날짜는 YYYY-MM-DD 형식으로 입력해주세요.');
+      return;
+    }
+    if (!newTitle.trim()) {
+      await notify('오류', '글감 제목을 입력해주세요.');
+      return;
+    }
+    setSavingPrompt(true);
+    try {
+      await createPrompt(newDate.trim(), newTitle.trim(), newCategory);
+      await notify('추가했어요', `${newDate.trim()} 글감으로 "${newTitle.trim()}"을(를) 등록했어요.`);
+      setNewDate('');
+      setNewTitle('');
+    } catch (e) {
+      await notify('오류', '글감 추가에 실패했어요.');
+    } finally {
+      setSavingPrompt(false);
+    }
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -70,6 +101,38 @@ export default function AdminDashboardScreen() {
 
       <TouchableOpacity style={styles.refreshButton} onPress={load} disabled={loading}>
         <Text style={styles.refreshButtonText}>새로고침</Text>
+      </TouchableOpacity>
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>글감 추가</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="날짜 (YYYY-MM-DD)"
+        placeholderTextColor={colors.textSoft}
+        value={newDate}
+        onChangeText={setNewDate}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="글감 제목"
+        placeholderTextColor={colors.textSoft}
+        value={newTitle}
+        onChangeText={setNewTitle}
+      />
+      <View style={styles.categoryRow}>
+        {PROMPT_CATEGORIES.map((c) => (
+          <TouchableOpacity
+            key={c}
+            style={[styles.categoryChip, newCategory === c && styles.categoryChipSelected]}
+            onPress={() => setNewCategory(c)}
+          >
+            <Text style={[styles.categoryChipText, newCategory === c && styles.categoryChipTextSelected]}>{c}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <TouchableOpacity style={styles.addButton} onPress={handleAddPrompt} disabled={savingPrompt}>
+        {savingPrompt ? <ActivityIndicator color="#fff" /> : <Text style={styles.addButtonText}>글감 추가</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -115,4 +178,28 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   refreshButtonText: { color: colors.primary, fontWeight: '700' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  input: {
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    color: colors.text,
+  },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  categoryChip: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  categoryChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryChipText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
+  categoryChipTextSelected: { color: '#fff' },
+  addButton: { backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
+  addButtonText: { color: '#fff', fontWeight: '700' },
 });

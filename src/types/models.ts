@@ -17,6 +17,7 @@ export interface Writing {
   updatedAt: number;
   visibility: Visibility;
   postId?: string | null;
+  category?: string; // 글감 카테고리(개인 통계용 비정규화)
 }
 
 export interface Post {
@@ -28,6 +29,7 @@ export interface Post {
   createdAt: number;
   likeCount: number;
   commentCount: number;
+  category?: string;
 }
 
 export interface Comment {
@@ -57,6 +59,9 @@ export interface UserProfile {
   lastWritingDate?: string | null;
   blockedUserIds: string[];
   earnedBadgeIds: string[];
+  bio?: string | null;
+  bestStreak: number;
+  preferredCategories?: string[];
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

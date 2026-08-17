@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -13,6 +12,8 @@ import {
 import { db } from '../config/firebase';
 import { Comment, DailyStats, Post, Report, UserProfile } from '../types/models';
 import { todayDateString, timestampToDateString } from '../utils/date';
+import { deletePost, getPostById } from './postService';
+import { deleteComment } from './commentService';
 
 // 관리자 여부 확인. admins/{uid} 문서는 Admin SDK로만 생성되므로
 // 사용자가 스스로 관리자가 될 수는 없다.
@@ -120,10 +121,19 @@ export async function getRevisitRate(
 
 // 신고된 콘텐츠를 삭제하고 신고를 처리 완료로 표시한다.
 export async function deleteReportedContent(report: Report): Promise<void> {
-  const col = report.targetType === 'post' ? 'posts' : 'comments';
-  await deleteDoc(doc(db, col, report.targetId)).catch(() => {
+  try {
+    if (report.targetType === 'post') {
+      const post = await getPostById(report.targetId);
+      // deletePost는 댓글/좋아요/저장까지 함께 지우고 원본 글을 비공개로 되돌린다.
+      if (post) await deletePost(post.id, post.writingId);
+    } else {
+      const snap = await getDoc(doc(db, 'comments', report.targetId));
+      // deleteComment는 게시물의 commentCount도 함께 맞춘다.
+      if (snap.exists()) await deleteComment(report.targetId, (snap.data() as Comment).postId);
+    }
+  } catch {
     // 이미 삭제된 콘텐츠일 수 있다. 신고 처리는 계속 진행한다.
-  });
+  }
   await updateDoc(doc(db, 'reports', report.id), { status: 'reviewed' });
 }
 

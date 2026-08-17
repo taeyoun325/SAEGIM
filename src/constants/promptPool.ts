@@ -11,6 +11,9 @@ export interface PromptSeed {
   category: string;
 }
 
+// PROMPT_POOL에 실제로 쓰인 카테고리 전체 목록(선호 카테고리 선택, 관리자 글감 추가 폼에서 재사용).
+export const PROMPT_CATEGORIES = ['관계', '자아', '감정', '계절', '가치', '상황', '질문'];
+
 export const PROMPT_POOL: PromptSeed[] = [
   { title: '우정', category: '관계' },
   { title: '가족', category: '관계' },

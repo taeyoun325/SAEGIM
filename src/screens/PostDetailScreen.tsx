@@ -12,18 +12,21 @@ import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { DocumentSnapshot } from 'firebase/firestore';
 import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post, Comment } from '../types/models';
 import { getPostById, deletePost } from '../services/postService';
 import { getComments, addComment, deleteComment } from '../services/commentService';
 import { toggleLike, hasLiked } from '../services/likeService';
+import { toggleSave, hasSaved } from '../services/saveService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { COMMENT_MAX_LENGTH } from '../constants/config';
 import { getUserProfile } from '../services/userService';
 import { shareAsImage } from '../services/shareService';
 import ShareCard from '../components/ShareCard';
+import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -37,7 +40,10 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<Post | null>(null);
   const [authorNickname, setAuthorNickname] = useState('...');
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLastDoc, setCommentsLastDoc] = useState<DocumentSnapshot | null>(null);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -52,14 +58,32 @@ export default function PostDetailScreen() {
       if (p) {
         const author = await getUserProfile(p.userId);
         setAuthorNickname(author?.nickname ?? '알 수 없음');
-        const [commentPage, likedResult] = await Promise.all([getComments(postId), hasLiked(postId, user.uid)]);
+        const [commentPage, likedResult, savedResult] = await Promise.all([
+          getComments(postId),
+          hasLiked(postId, user.uid),
+          hasSaved(postId, user.uid),
+        ]);
         setComments(commentPage.comments);
+        setCommentsLastDoc(commentPage.lastDoc);
         setLiked(likedResult);
+        setSaved(savedResult);
       }
     } finally {
       setLoading(false);
     }
   }, [postId, user]);
+
+  async function loadMoreComments() {
+    if (!post || !commentsLastDoc || loadingMoreComments) return;
+    setLoadingMoreComments(true);
+    try {
+      const page = await getComments(post.id, commentsLastDoc);
+      setComments((prev) => [...prev, ...page.comments]);
+      setCommentsLastDoc(page.lastDoc);
+    } finally {
+      setLoadingMoreComments(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +99,15 @@ export default function PostDetailScreen() {
       setPost({ ...post, likeCount: post.likeCount + (nowLiked ? 1 : -1) });
     } catch (e) {
       await notify('오류', '좋아요 처리에 실패했어요.');
+    }
+  }
+
+  async function handleToggleSave() {
+    if (!user || !post) return;
+    try {
+      setSaved(await toggleSave(post.id, user.uid));
+    } catch (e) {
+      await notify('오류', '저장 처리에 실패했어요.');
     }
   }
 
@@ -95,6 +128,7 @@ export default function PostDetailScreen() {
       setCommentText('');
       const page = await getComments(post.id);
       setComments(page.comments);
+      setCommentsLastDoc(page.lastDoc);
       setPost({ ...post, commentCount: post.commentCount + 1 });
     } catch (e: any) {
       await notify('오류', e?.message || '댓글 작성에 실패했어요.');
@@ -149,6 +183,9 @@ export default function PostDetailScreen() {
         data={comments}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        onEndReached={loadMoreComments}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMoreComments ? <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} /> : null}
         ListHeaderComponent={
           <View>
             <View style={styles.postCard}>
@@ -163,6 +200,9 @@ export default function PostDetailScreen() {
                   <Text style={liked ? styles.likedText : styles.actionText}>{liked ? '♥' : '♡'} {post.likeCount}</Text>
                 </TouchableOpacity>
                 <Text style={styles.actionText}>💬 {post.commentCount}</Text>
+                <TouchableOpacity onPress={handleToggleSave}>
+                  <Text style={saved ? styles.savedText : styles.actionText}>{saved ? '🔖' : '📑'} 저장</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={handleShare}>
                   <Text style={styles.actionText}>📤 공유</Text>
                 </TouchableOpacity>
@@ -184,7 +224,10 @@ export default function PostDetailScreen() {
         renderItem={({ item }) => (
           <View style={styles.commentRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.commentAuthor}>{item.authorNickname}</Text>
+              <View style={styles.commentAuthorRow}>
+                <Text style={styles.commentAuthor}>{item.authorNickname}</Text>
+                <Text style={styles.commentTime}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
+              </View>
               <Text style={styles.commentContent}>{item.content}</Text>
             </View>
             {item.userId === user?.uid ? (
@@ -231,10 +274,13 @@ const styles = StyleSheet.create({
   actionButton: {},
   actionText: { color: colors.textSoft },
   likedText: { color: colors.danger, fontWeight: '700' },
+  savedText: { color: colors.primary, fontWeight: '700' },
   reportText: { color: colors.textSoft, marginLeft: 'auto' },
   commentsTitle: { marginTop: spacing.lg, marginBottom: spacing.sm, fontWeight: '700', color: colors.primary },
   commentRow: { flexDirection: 'row', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  commentAuthorRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   commentAuthor: { fontWeight: '600', color: colors.text, fontSize: 13 },
+  commentTime: { color: colors.textSoft, fontSize: 11 },
   commentContent: { color: colors.text, marginTop: 2 },
   deleteText: { color: colors.textSoft, fontSize: 12 },
   commentInputRow: {

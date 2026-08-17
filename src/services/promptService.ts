@@ -1,4 +1,4 @@
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { DailyPrompt } from '../types/models';
 import { dateStringToPromptId, todayDateString } from '../utils/date';
@@ -40,4 +40,11 @@ export async function getPromptById(id: string): Promise<DailyPrompt | null> {
 
 export async function getTodayPrompt(): Promise<DailyPrompt | null> {
   return getPromptById(dateStringToPromptId(todayDateString()));
+}
+
+// 관리자 전용: 특정 날짜의 글감을 직접 지정한다(firestore.rules에서 isAdmin()만 쓰기 허용).
+export async function createPrompt(dateStr: string, title: string, category: string): Promise<void> {
+  const id = dateStringToPromptId(dateStr);
+  const prompt: DailyPrompt = { id, date: dateStr, title, category, createdAt: Date.now() };
+  await setDoc(doc(db, promptsCol, id), prompt);
 }

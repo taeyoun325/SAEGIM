@@ -11,7 +11,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Onboarding'>;
 const PAGES = [
   { title: '새김에 오신 것을 환영해요', body: '매일 하나의 글감\n오늘의 생각을 새겨보세요.' },
   { title: '오늘의 생각을 새겨보세요', body: '새긴 생각은 나만 보고,\n게시하면 모두와 나눠요.' },
-  { title: '같은 날, 다른 생각들', body: '같은 글감으로 사람들이\n새긴 생각을 함께 읽어보세요.' },
+  { title: '같은 날, 다른 생각들', body: '같은 글감으로 사람들이\n새긴 생각을 함께 읽어보세요.\n지금 로그인하고 오늘의 글감부터 써볼까요?' },
 ];
 
 export default function OnboardingScreen({ navigation }: Props) {

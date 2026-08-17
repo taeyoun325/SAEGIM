@@ -23,7 +23,7 @@ function pad(n: number) {
 }
 
 export default function CalendarScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigation = useNavigation<Nav>();
   const [cursor, setCursor] = useState(() => new Date());
   const [myWritings, setMyWritings] = useState<Record<string, Writing>>({});
@@ -77,7 +77,8 @@ export default function CalendarScreen() {
     try {
       const [prompt, feed] = await Promise.all([getPromptById(promptId), getPromptFeed(promptId, null, 'popular')]);
       setSelectedPrompt(prompt);
-      setPopularPosts(feed.posts.slice(0, 5));
+      const blockedIds = profile?.blockedUserIds ?? [];
+      setPopularPosts(feed.posts.filter((p) => !blockedIds.includes(p.userId)).slice(0, 5));
     } finally {
       setDetailLoading(false);
     }
