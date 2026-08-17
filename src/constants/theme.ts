@@ -46,12 +46,31 @@ export const darkColors: ColorTokens = {
   success: '#7FB3A2',
 };
 
-// 기기의 다크모드 설정을 앱 실행 시점에 한 번 읽는다.
-// (29개 화면이 StyleSheet.create에 색을 구워넣는 구조라 실행 중 전환은 하지 않는다.
-//  테마를 바꾸면 앱 재시작 / 웹은 새로고침이 필요하다.)
-export const isDarkMode = Appearance.getColorScheme() === 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark';
 
-export const colors: ColorTokens = isDarkMode ? darkColors : lightColors;
+export const THEME_STORAGE_KEY = 'saegim:themePreference';
+
+// 29개 화면이 StyleSheet.create에 색을 구워넣는 구조라, colors를 "내용을 바꿀 수 있는
+// 하나의 객체"로 두고 화면 모듈이 로드되기 전에 값만 갈아끼운다.
+// App.tsx가 저장된 설정을 먼저 읽고 applyThemePreference를 호출한 뒤에야
+// 화면들이 들어있는 AppShell을 동적으로 불러오기 때문에, 이 방식으로 라이트/다크가
+// 정확히 반영된다(실행 중 전환은 웹은 새로고침, 앱은 재시작 시 적용된다).
+export const colors: ColorTokens = { ...lightColors };
+
+let darkModeActive = false;
+
+export function applyThemePreference(preference: ThemePreference): void {
+  const systemDark = Appearance.getColorScheme() === 'dark';
+  darkModeActive = preference === 'system' ? systemDark : preference === 'dark';
+  Object.assign(colors, darkModeActive ? darkColors : lightColors);
+}
+
+export function getIsDarkMode(): boolean {
+  return darkModeActive;
+}
+
+// 저장된 설정을 아직 읽지 못한 상태(최초 모듈 로드)에서는 기기 설정을 따른다.
+applyThemePreference('system');
 
 export const spacing = {
   xs: 4,

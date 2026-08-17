@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -25,11 +25,8 @@ import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { COMMENT_MAX_LENGTH } from '../constants/config';
 import { getUserProfile } from '../services/userService';
-import { shareAsImage } from '../services/shareService';
 import { logEvent } from '../services/statsService';
-import ShareCard from '../components/ShareCard';
-import ShareThemeModal from '../components/ShareThemeModal';
-import { ShareTheme, DEFAULT_SHARE_THEME } from '../constants/shareThemes';
+import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -40,6 +37,7 @@ export default function PostDetailScreen() {
   const { postId } = route.params as { postId: string };
   const { user, profile } = useAuth();
   const { confirm, notify } = useDialog();
+  const { share } = useShare();
 
   const [post, setPost] = useState<Post | null>(null);
   const [authorNickname, setAuthorNickname] = useState('...');
@@ -53,10 +51,6 @@ export default function PostDetailScreen() {
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorId: string; nickname: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
-  const [shareTheme, setShareTheme] = useState<ShareTheme>(DEFAULT_SHARE_THEME);
-  const [themeModalVisible, setThemeModalVisible] = useState(false);
-  const [pendingShare, setPendingShare] = useState(false);
-  const shareCardRef = useRef<View>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -160,25 +154,8 @@ export default function PostDetailScreen() {
 
   function handleShare() {
     if (!post) return;
-    logEvent('share_open').catch(() => {});
-    setThemeModalVisible(true);
+    share({ lines: post.lines, createdAt: post.createdAt, filename: `saegim-${post.id}` });
   }
-
-  function handleThemeSelect(theme: ShareTheme) {
-    setShareTheme(theme);
-    setThemeModalVisible(false);
-    setPendingShare(true);
-  }
-
-  useEffect(() => {
-    if (!pendingShare || !post) return;
-    setPendingShare(false);
-    shareAsImage(shareCardRef, `saegim-${post.id}`)
-      .then(() => logEvent('share_done').catch(() => {}))
-      .catch(async () => {
-        await notify('오류', '공유 이미지를 만들지 못했어요.');
-      });
-  }, [pendingShare, post, notify]);
 
   async function handleAddComment() {
     if (!user || !post || !profile || !commentText.trim()) return;
@@ -371,14 +348,6 @@ export default function PostDetailScreen() {
           <Text style={styles.sendText}>등록</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.offscreen} pointerEvents="none">
-        <ShareCard ref={shareCardRef} lines={post.lines} createdAt={post.createdAt} theme={shareTheme} />
-      </View>
-      <ShareThemeModal
-        visible={themeModalVisible}
-        onSelect={handleThemeSelect}
-        onClose={() => setThemeModalVisible(false)}
-      />
     </KeyboardAvoidingView>
   );
 }

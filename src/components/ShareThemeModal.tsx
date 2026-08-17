@@ -1,4 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Text from './Text';
 import { colors, spacing, radius } from '../constants/theme';
 import { SHARE_THEMES, ShareTheme } from '../constants/shareThemes';
@@ -19,9 +20,9 @@ export default function ShareThemeModal({ visible, onSelect, onClose }: Props) {
           <View style={styles.grid}>
             {SHARE_THEMES.map((theme) => (
               <TouchableOpacity key={theme.id} style={styles.item} onPress={() => onSelect(theme)}>
-                <View style={[styles.swatch, { backgroundColor: theme.background, borderColor: theme.accentColor }]}>
+                <LinearGradient colors={theme.gradient} style={[styles.swatch, { borderColor: theme.accentColor }]}>
                   <Text style={[styles.swatchText, { color: theme.textColor }]}>새김</Text>
-                </View>
+                </LinearGradient>
                 <Text style={styles.name}>{theme.name}</Text>
               </TouchableOpacity>
             ))}

@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -99,7 +98,3 @@ export async function linkWritingToPost(writingId: string, postId: string | null
   await updateDoc(doc(db, writingsCol, writingId), { postId });
 }
 
-// 비공개 글(게시된 적 없는 글)만 직접 지울 수 있다. 공개된 글은 postService.deletePost로 지운다.
-export async function deleteWriting(writingId: string): Promise<void> {
-  await deleteDoc(doc(db, writingsCol, writingId));
-}

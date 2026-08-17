@@ -9,7 +9,7 @@ import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
-import { updateUserProfile } from '../services/userService';
+import { updateUserProfile, syncUserCounts } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BADGE_DEFS } from '../constants/badges';
@@ -37,6 +37,11 @@ export default function ProfileScreen() {
       setPosts(list);
 
       if (profile) {
+        // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
+        // (값이 이미 맞으면 같은 객체를 그대로 돌려주므로 불필요한 갱신이 없다.)
+        const synced = await syncUserCounts(user.uid, profile);
+        if (synced !== profile) await refreshProfile();
+
         const totalLikes = list.reduce((sum, p) => sum + p.likeCount, 0);
         const { newBadges } = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
         if (newBadges.length > 0) {

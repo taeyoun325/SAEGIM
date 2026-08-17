@@ -27,14 +27,12 @@ import { todayDateString } from '../utils/date';
 import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
-import ShareCard from '../components/ShareCard';
-import ShareThemeModal from '../components/ShareThemeModal';
-import { ShareTheme, DEFAULT_SHARE_THEME } from '../constants/shareThemes';
-import { shareAsImage } from '../services/shareService';
+import { useShare } from '../context/ShareContext';
 
 export default function TodayScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
+  const { share } = useShare();
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [writing, setWriting] = useState<Writing | null>(null);
   const [text, setText] = useState('');
@@ -44,10 +42,6 @@ export default function TodayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  const [shareTheme, setShareTheme] = useState<ShareTheme>(DEFAULT_SHARE_THEME);
-  const [themeModalVisible, setThemeModalVisible] = useState(false);
-  const [pendingShare, setPendingShare] = useState(false);
-  const shareCardRef = useRef<View>(null);
   const writeStartLogged = useRef(false);
 
   const load = useCallback(async () => {
@@ -197,25 +191,8 @@ export default function TodayScreen() {
 
   function handleShare() {
     if (!writing) return;
-    logEvent('share_open').catch(() => {});
-    setThemeModalVisible(true);
+    share({ lines: writing.lines, createdAt: writing.createdAt, filename: `saegim-${writing.id}` });
   }
-
-  function handleThemeSelect(theme: ShareTheme) {
-    setShareTheme(theme);
-    setThemeModalVisible(false);
-    setPendingShare(true);
-  }
-
-  useEffect(() => {
-    if (!pendingShare || !writing) return;
-    setPendingShare(false);
-    shareAsImage(shareCardRef, `saegim-${writing.id}`)
-      .then(() => logEvent('share_done').catch(() => {}))
-      .catch(async () => {
-        await notify('오류', '공유 이미지를 만들지 못했어요.');
-      });
-  }, [pendingShare, writing, notify]);
 
   async function handleUnpublish() {
     if (!writing || !writing.postId || !user) return;
@@ -329,16 +306,6 @@ export default function TodayScreen() {
       )}
       <BackgroundMascot source={require('../assets/mascot-today.png')} />
       </ScrollView>
-      {writing && (
-        <View style={styles.offscreen} pointerEvents="none">
-          <ShareCard ref={shareCardRef} lines={writing.lines} createdAt={writing.createdAt} theme={shareTheme} />
-        </View>
-      )}
-      <ShareThemeModal
-        visible={themeModalVisible}
-        onSelect={handleThemeSelect}
-        onClose={() => setThemeModalVisible(false)}
-      />
     </View>
   );
 }

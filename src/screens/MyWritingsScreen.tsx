@@ -7,14 +7,14 @@ import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { Writing } from '../types/models';
-import { getMyWritings, updateWritingContent, deleteWriting, validateLines } from '../services/writingService';
-import { deletePost, updatePostContent } from '../services/postService';
-import { adjustPublicPostCount, adjustWritingCount } from '../services/userService';
+import { getMyWritings, updateWritingContent, validateLines } from '../services/writingService';
+import { deleteWritingCompletely, updatePostContent } from '../services/postService';
+import { syncUserCounts } from '../services/userService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
 export default function MyWritingsScreen() {
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const [writings, setWritings] = useState<Writing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,14 +115,11 @@ export default function MyWritingsScreen() {
 
     setBusy(true);
     try {
-      if (selected.postId) {
-        await deletePost(selected.postId, selected.id);
-        await adjustPublicPostCount(user.uid, -1);
-      } else {
-        await deleteWriting(selected.id);
-      }
-      await adjustWritingCount(user.uid, -1);
+      // 공개된 글이면 게시물과 딸린 콘텐츠까지 함께 지운다.
+      await deleteWritingCompletely(selected.id, selected.postId ?? null);
       setWritings((prev) => prev.filter((w) => w.id !== selected.id));
+      // 개수를 직접 -1 하지 않고 실제 문서 수로 다시 맞춘다(어긋남이 누적되지 않게).
+      if (profile) await syncUserCounts(user.uid, profile);
       await refreshProfile();
       closeDetail();
     } catch (e) {

@@ -5,7 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { colors, spacing, radius } from '../constants/theme';
+import { colors, spacing, radius, ThemePreference } from '../constants/theme';
+import { loadThemePreference, saveThemePreference, canReloadForTheme, reloadForTheme } from '../services/themeService';
 import { isReminderEnabled, enableDailyReminder, disableDailyReminder } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
 import { updateUserProfile } from '../services/userService';
@@ -15,12 +16,35 @@ import BackgroundMascot from '../components/BackgroundMascot';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+const THEME_OPTIONS: { value: ThemePreference; label: string; emoji: string }[] = [
+  { value: 'system', label: '기기 설정', emoji: '📱' },
+  { value: 'light', label: '라이트', emoji: '☀️' },
+  { value: 'dark', label: '다크', emoji: '🌙' },
+];
+
 export default function SettingsScreen() {
   const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
+
+  useEffect(() => {
+    loadThemePreference().then(setThemePreference);
+  }, []);
+
+  async function changeTheme(next: ThemePreference) {
+    if (next === themePreference) return;
+    setThemePreference(next);
+    await saveThemePreference(next);
+    // 이미 만들어진 스타일에는 색이 구워져 있어 화면을 처음부터 다시 그려야 반영된다.
+    if (canReloadForTheme) {
+      reloadForTheme();
+      return;
+    }
+    await notify('테마를 저장했어요', '앱을 다시 시작하면 새 테마로 열려요.');
+  }
 
   async function togglePreferredCategory(category: string) {
     if (!user || !profile) return;
@@ -102,6 +126,30 @@ export default function SettingsScreen() {
         <View style={styles.reminderRow}>
           <Text style={styles.rowButtonText}>매일 저녁 8시 알림</Text>
           <Switch value={reminderOn} onValueChange={toggleReminder} />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>화면 테마</Text>
+          <Text style={styles.categoryHint}>
+            {canReloadForTheme ? '고르면 바로 적용돼요.' : '고른 테마는 앱을 다시 시작할 때 적용돼요.'}
+          </Text>
+          <View style={styles.themeRow}>
+            {THEME_OPTIONS.map((option) => {
+              const selected = themePreference === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.themeChip, selected && styles.themeChipSelected]}
+                  onPress={() => changeTheme(option.value)}
+                >
+                  <Text style={styles.themeEmoji}>{option.emoji}</Text>
+                  <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </View>
 
@@ -190,6 +238,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
+  themeRow: { flexDirection: 'row', gap: spacing.sm },
+  themeChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+  },
+  themeChipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.primary },
+  themeEmoji: { fontSize: 18 },
+  themeChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  themeChipTextSelected: { color: colors.primary },
   categoryChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   categoryChipText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
   categoryChipTextSelected: { color: '#fff' },

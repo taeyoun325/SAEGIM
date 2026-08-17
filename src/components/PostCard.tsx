@@ -5,8 +5,8 @@ import { Post } from '../types/models';
 import { colors, spacing, radius } from '../constants/theme';
 import { getUserProfile } from '../services/userService';
 import { toggleLike, hasLiked } from '../services/likeService';
-import { toggleSave, hasSaved } from '../services/saveService';
 import { useAuth } from '../context/AuthContext';
+import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
 interface Props {
@@ -20,10 +20,10 @@ const DOUBLE_TAP_MS = 300;
 
 export default function PostCard({ post, onPress, onPressAuthor, onPressComment }: Props) {
   const { user } = useAuth();
+  const { share } = useShare();
   const [nickname, setNickname] = useState<string>('...');
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
-  const [saved, setSaved] = useState(false);
   const lastTapRef = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartAnim = useRef(new Animated.Value(0)).current;
@@ -35,18 +35,10 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment 
   useEffect(() => {
     if (!user) return;
     hasLiked(post.id, user.uid).then(setLiked);
-    hasSaved(post.id, user.uid).then(setSaved);
   }, [post.id, user]);
 
-  async function handleToggleSave() {
-    if (!user) return;
-    const next = !saved;
-    setSaved(next);
-    try {
-      await toggleSave(post.id, user.uid);
-    } catch {
-      setSaved(!next);
-    }
+  function handleShare() {
+    share({ lines: post.lines, createdAt: post.createdAt, filename: `saegim-${post.id}` });
   }
 
   async function like() {
@@ -134,8 +126,8 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment 
             <Text style={styles.icon}>💬</Text>
             <Text style={styles.sideCount}>{post.commentCount}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sideButton} onPress={handleToggleSave}>
-            <Text style={saved ? styles.savedIcon : styles.icon}>{saved ? '🔖' : '📑'}</Text>
+          <TouchableOpacity style={styles.sideButton} onPress={handleShare}>
+            <Text style={styles.icon}>📤</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -168,6 +160,5 @@ const styles = StyleSheet.create({
   sideButton: { alignItems: 'center' },
   icon: { fontSize: 20, color: colors.textSoft },
   likedIcon: { fontSize: 20, color: colors.danger },
-  savedIcon: { fontSize: 18, color: colors.primary },
   sideCount: { color: colors.textSoft, fontSize: 11, marginTop: 2 },
 });

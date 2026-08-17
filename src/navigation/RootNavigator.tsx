@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
-import { colors, isDarkMode } from '../constants/theme';
+import { colors, getIsDarkMode } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
@@ -26,7 +26,7 @@ const MIN_SPLASH_MS = 1600;
 
 // 스택 헤더/화면 배경은 React Navigation이 자기 테마로 칠하므로,
 // 앱 색 토큰을 넘겨줘야 다크모드에서 헤더만 하얗게 남지 않는다.
-const base = isDarkMode ? DarkTheme : DefaultTheme;
+const base = getIsDarkMode() ? DarkTheme : DefaultTheme;
 const navigationTheme = {
   ...base,
   colors: {

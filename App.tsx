@@ -1,13 +1,13 @@
-import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useFonts, Jua_400Regular } from '@expo-google-fonts/jua';
 import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { AuthProvider } from './src/context/AuthContext';
-import { DialogProvider } from './src/context/DialogContext';
-import RootNavigator from './src/navigation/RootNavigator';
-import OfflineBanner from './src/components/OfflineBanner';
-import { colors } from './src/constants/theme';
+import { colors, applyThemePreference } from './src/constants/theme';
+import { loadThemePreference } from './src/services/themeService';
 import { useIsWideWeb } from './src/hooks/useResponsive';
+
+// 화면들이 StyleSheet를 만들 때 이미 선택된 팔레트를 쓰도록,
+// 저장된 테마 설정을 읽어 적용한 "뒤에" 앱 본체를 불러온다.
+const AppShell = lazy(() => import('./src/AppShell'));
 
 // 폰트가 아무리 느려도 이 시간이 지나면 앱을 띄운다.
 // 폰트 하나 때문에 앱 전체가 빈 화면에 갇히는 것을 막는다(시스템 폰트로 대체됨).
@@ -16,7 +16,17 @@ const FONT_TIMEOUT_MS = 4000;
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({ Jua_400Regular });
   const [fontTimedOut, setFontTimedOut] = useState(false);
+  const [themeReady, setThemeReady] = useState(false);
   const isWideWeb = useIsWideWeb();
+
+  useEffect(() => {
+    loadThemePreference()
+      .then((preference) => applyThemePreference(preference))
+      .catch(() => {
+        // 설정을 못 읽으면 기기 설정을 그대로 따른다.
+      })
+      .finally(() => setThemeReady(true));
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) return;
@@ -29,12 +39,15 @@ export default function App() {
   const useNarrowFrame = Platform.OS === 'web' && !isWideWeb;
 
   // 폰트 로딩 실패나 지연은 치명적이지 않다. 앱은 반드시 뜬다.
-  const ready = fontsLoaded || !!fontError || fontTimedOut;
+  const ready = themeReady && (fontsLoaded || !!fontError || fontTimedOut);
+
+  // colors는 내용이 교체되는 객체라, 렌더 시점에 읽어야 선택된 테마가 반영된다.
+  const frameStyle = [useNarrowFrame ? styles.phoneFrame : styles.fill, { backgroundColor: colors.background }];
 
   if (!ready) {
     return (
       <View style={useNarrowFrame ? styles.webBackdrop : styles.fill}>
-        <View style={[useNarrowFrame ? styles.phoneFrame : styles.fill, styles.center]}>
+        <View style={[...frameStyle, styles.center]}>
           <ActivityIndicator color={colors.primary} />
         </View>
       </View>
@@ -43,14 +56,16 @@ export default function App() {
 
   return (
     <View style={useNarrowFrame ? styles.webBackdrop : styles.fill}>
-      <View style={useNarrowFrame ? styles.phoneFrame : styles.fill}>
-        <DialogProvider>
-          <AuthProvider>
-            <OfflineBanner />
-            <RootNavigator />
-            <StatusBar style="auto" />
-          </AuthProvider>
-        </DialogProvider>
+      <View style={frameStyle}>
+        <Suspense
+          fallback={
+            <View style={[styles.fill, styles.center]}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          }
+        >
+          <AppShell />
+        </Suspense>
       </View>
     </View>
   );
@@ -66,6 +81,5 @@ const styles = StyleSheet.create({
     height: '100vh' as unknown as number,
     maxHeight: 932,
     overflow: 'hidden',
-    backgroundColor: colors.background,
   },
 });

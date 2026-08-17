@@ -117,6 +117,18 @@ export async function deletePost(postId: string, writingId: string): Promise<voi
   await linkWritingToPost(writingId, null);
 }
 
+// 글을 원본까지 완전히 삭제한다.
+// deletePost는 "공개만 취소"라 원본 글(writings 문서)을 비공개로 남기지만,
+// 사용자가 "내 새김 관리"에서 삭제를 누른 건 기록 자체를 지우겠다는 뜻이므로
+// 게시물·딸린 콘텐츠·원본 글을 한 번에 지운다.
+export async function deleteWritingCompletely(writingId: string, postId: string | null): Promise<void> {
+  if (postId) {
+    await deletePostRelatedContent(postId);
+    await deleteDoc(doc(db, postsCol, postId));
+  }
+  await deleteDoc(doc(db, 'writings', writingId));
+}
+
 export async function adjustLikeCount(postId: string, delta: 1 | -1): Promise<void> {
   await updateDoc(doc(db, postsCol, postId), { likeCount: increment(delta) });
 }
