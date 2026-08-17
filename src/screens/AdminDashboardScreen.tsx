@@ -4,7 +4,13 @@ import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
-import { getTodayStats, getRevisitRate } from '../services/adminService';
+import {
+  getTodayStats,
+  getRevisitRate,
+  getActiveUserMetrics,
+  getFirstWriteConversion,
+  ActiveUserMetrics,
+} from '../services/adminService';
 import { createPrompt } from '../services/promptService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
 import { useDialog } from '../context/DialogContext';
@@ -19,6 +25,8 @@ interface Revisit {
 export default function AdminDashboardScreen() {
   const { notify } = useDialog();
   const [stats, setStats] = useState<DailyStats | null>(null);
+  const [activeUsers, setActiveUsers] = useState<ActiveUserMetrics | null>(null);
+  const [conversion, setConversion] = useState<{ total: number; wrote: number; rate: number } | null>(null);
   const [revisit7, setRevisit7] = useState<Revisit | null>(null);
   const [revisit30, setRevisit30] = useState<Revisit | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,8 +40,16 @@ export default function AdminDashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [today, r7, r30] = await Promise.all([getTodayStats(), getRevisitRate(7), getRevisitRate(30)]);
+      const [today, active, conv, r7, r30] = await Promise.all([
+        getTodayStats(),
+        getActiveUserMetrics(),
+        getFirstWriteConversion(),
+        getRevisitRate(7),
+        getRevisitRate(30),
+      ]);
       setStats(today);
+      setActiveUsers(active);
+      setConversion(conv);
       setRevisit7(r7);
       setRevisit30(r30);
     } catch (e) {
@@ -92,7 +108,23 @@ export default function AdminDashboardScreen() {
 
           <View style={styles.divider} />
 
+          <Text style={styles.sectionTitle}>활동 사용자</Text>
+          <Text style={styles.sectionHint}>글을 쓴 사용자 기준(중복 제외). 앱을 열기만 한 사용자는 포함되지 않아요.</Text>
           <View style={styles.grid}>
+            <StatCard label="DAU (오늘)" value={activeUsers?.dau ?? 0} />
+            <StatCard label="WAU (7일)" value={activeUsers?.wau ?? 0} />
+            <StatCard label="MAU (30일)" value={activeUsers?.mau ?? 0} />
+          </View>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>전환 · 유지</Text>
+          <View style={styles.grid}>
+            <StatCard
+              label="첫 글 작성률"
+              value={conversion ? `${Math.round(conversion.rate * 100)}%` : '-'}
+              sub={conversion ? `${conversion.wrote}/${conversion.total}명` : undefined}
+            />
             <StatCard label="7일 재방문율" value={revisit7 ? `${Math.round(revisit7.rate * 100)}%` : '-'} sub={revisit7 ? `${revisit7.revisitedCount}/${revisit7.eligibleCount}명` : undefined} />
             <StatCard label="30일 재방문율" value={revisit30 ? `${Math.round(revisit30.rate * 100)}%` : '-'} sub={revisit30 ? `${revisit30.revisitedCount}/${revisit30.eligibleCount}명` : undefined} />
           </View>
@@ -179,6 +211,7 @@ const styles = StyleSheet.create({
   },
   refreshButtonText: { color: colors.primary, fontWeight: '700' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  sectionHint: { color: colors.textSoft, fontSize: 11, marginTop: -spacing.xs, marginBottom: spacing.sm, lineHeight: 16 },
   input: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,

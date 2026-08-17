@@ -85,6 +85,51 @@ export async function getTodayStats(): Promise<DailyStats> {
   return (await getDailyStats(date)) ?? emptyStats(date);
 }
 
+export interface ActiveUserMetrics {
+  dau: number;
+  wau: number;
+  mau: number;
+}
+
+// DAU/WAU/MAU. dailyStats의 activeUserIds를 기간별로 합집합해 중복 없이 센다.
+// ⚠️ activeUserIds는 recordTodayWriting에서만 채워지므로 "글을 쓴 사용자" 기준이다.
+// (앱을 열기만 한 사용자는 집계되지 않는다 — 그건 분석 이벤트 수집이 있어야 한다.)
+// 최근 30일 문서를 날짜 범위 쿼리 한 번으로 가져온다(최대 30 read).
+export async function getActiveUserMetrics(): Promise<ActiveUserMetrics> {
+  const today = todayDateString();
+  const monthFrom = addDays(today, -29); // 오늘 포함 30일
+  const weekFrom = addDays(today, -6); // 오늘 포함 7일
+
+  const snap = await getDocs(
+    query(collection(db, dailyStatsCol), where('date', '>=', monthFrom), where('date', '<=', today))
+  );
+
+  const dau = new Set<string>();
+  const wau = new Set<string>();
+  const mau = new Set<string>();
+
+  snap.docs.forEach((d) => {
+    const stats = d.data() as DailyStats;
+    const ids = stats.activeUserIds ?? [];
+    ids.forEach((id) => mau.add(id));
+    if (stats.date >= weekFrom) ids.forEach((id) => wau.add(id));
+    if (stats.date === today) ids.forEach((id) => dau.add(id));
+  });
+
+  return { dau: dau.size, wau: wau.size, mau: mau.size };
+}
+
+// 가입 → 첫 글 작성 전환율. writingCount가 프로필에 이미 있어 추가 조회 없이 계산된다.
+export async function getFirstWriteConversion(
+  sampleLimit = 300
+): Promise<{ total: number; wrote: number; rate: number }> {
+  const snap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(sampleLimit)));
+  const users = snap.docs.map((d) => d.data() as UserProfile);
+  if (users.length === 0) return { total: 0, wrote: 0, rate: 0 };
+  const wrote = users.filter((u) => (u.writingCount ?? 0) > 0).length;
+  return { total: users.length, wrote, rate: wrote / users.length };
+}
+
 // 가입일 기준 N일 이내에 한 번이라도 다시 글을 쓴 사용자 비율.
 // 최근 가입자 표본(sampleLimit)만 살펴봐 비용을 억제한다.
 export async function getRevisitRate(
