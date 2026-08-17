@@ -1,4 +1,3 @@
-import React from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import Text from './Text';
 import { useNavigation } from '@react-navigation/native';

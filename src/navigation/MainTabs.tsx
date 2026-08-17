@@ -1,4 +1,3 @@
-import React from 'react';
 import Text from '../components/Text';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from './types';

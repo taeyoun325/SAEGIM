@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';

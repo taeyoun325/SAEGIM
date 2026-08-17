@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import Text from './Text';
 import { spacing, radius, fonts } from '../constants/theme';

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Pressable, Animated } from 'react-native';
 import Text from './Text';
 import { Post } from '../types/models';

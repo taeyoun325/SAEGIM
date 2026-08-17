@@ -1,4 +1,3 @@
-import React from 'react';
 import { TextInput as RNTextInput, TextInputProps } from 'react-native';
 import { fonts } from '../constants/theme';
 

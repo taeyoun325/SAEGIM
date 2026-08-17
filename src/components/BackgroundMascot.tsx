@@ -1,4 +1,3 @@
-import React from 'react';
 import { Image, StyleSheet, ImageSourcePropType } from 'react-native';
 
 interface Props {

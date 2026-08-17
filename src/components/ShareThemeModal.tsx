@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import Text from './Text';
 import { colors, spacing, radius } from '../constants/theme';
