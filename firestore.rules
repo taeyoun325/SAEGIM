@@ -23,6 +23,30 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── 도배 방지 ────────────────────────────────────────────────────────────
+    // 보안 규칙은 요청마다 상태가 없으므로, "마지막으로 언제 했는지"를 문서에 남겨 쿨다운을 건다.
+    // 핵심은 클라이언트가 시각을 위조하지 못하게 하는 것: 반드시 서버 시각(request.time)만 쓸 수 있다.
+    // 액션별로 문서를 따로 둬(단일 필드 전체 덮어쓰기) merge로 인한 판정 모호함을 없앤다.
+    // delete를 허용하면 쿨다운 기록을 지워 우회할 수 있으므로 create/update만 연다.
+    // (계정 삭제 시 이 문서는 남지만, uid가 재사용되지 않아 문제되지 않는다.)
+    match /rateLimits/{uid}/actions/{action} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at == request.time;
+    }
+
+    // 같은 배치(원자적 커밋) 안에서 쿨다운 문서가 "지금"으로 갱신되었고,
+    // 직전 기록이 cooldownSeconds보다 오래됐을 때만 통과한다.
+    // getAfter = 커밋 후 상태, get = 커밋 전 상태. 첫 시도는 문서가 없으므로 통과한다.
+    function withinCooldown(action, cooldownSeconds) {
+      let path = /databases/$(database)/documents/rateLimits/$(request.auth.uid)/actions/$(action);
+      return getAfter(path).data.at == request.time
+        && (!exists(path)
+            || get(path).data.at < request.time - duration.value(cooldownSeconds, 's'));
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // 글감: 관리자만 생성/수정할 수 있다(관리자 대시보드에서 추가). 클라이언트는 읽기만.
     match /prompts/{promptId} {
       allow read: if true;
@@ -47,9 +71,13 @@ service cloud.firestore {
     }
 
     // 글(Writing): 비공개 글은 작성자만 조회, 본인 글만 생성/수정.
+    // 생성은 60초 쿨다운. 앱은 글감당 한 편만 쓰게 하지만, 규칙만으로는 그걸 강제할 수 없어
+    // (쿼리를 못 하므로) 최소한 스크립트로 대량 생성하는 것을 막는다.
     match /writings/{writingId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && withinCooldown('writing', 60);
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
@@ -112,9 +140,13 @@ service cloud.firestore {
     }
 
     // 댓글: 로그인 사용자는 읽기/작성 가능. 본인 또는 관리자(신고 처리)가 삭제.
+    // 개수 제한이 없는 유일한 표면이라 15초 쿨다운을 규칙에서 강제한다.
+    // (좋아요는 문서 ID가 `${postId}_${userId}`라 중복 자체가 불가능해 별도 제한이 필요 없다.)
     match /comments/{commentId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && withinCooldown('comment', 15);
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow update: if false;
     }

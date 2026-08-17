@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -9,10 +8,12 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Writing } from '../types/models';
 import { WRITING_TOTAL_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED } from '../constants/config';
+import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
 
 const writingsCol = 'writings';
 
@@ -37,7 +38,11 @@ export async function createWriting(
   const { valid, reason } = validateLines(lines);
   if (!valid) throw new Error(reason);
   const now = Date.now();
-  const docRef = await addDoc(collection(db, writingsCol), {
+
+  // 쿨다운 기록을 같은 배치에 넣어야 도배 방지 규칙을 통과한다(rateLimitService 주석 참고).
+  const writingRef = doc(collection(db, writingsCol));
+  const batch = writeBatch(db);
+  batch.set(writingRef, {
     userId,
     promptId,
     lines: lines.filter((l) => l.trim().length > 0),
@@ -47,7 +52,15 @@ export async function createWriting(
     postId: null,
     ...(category ? { category } : {}),
   } satisfies Omit<Writing, 'id'>);
-  return docRef.id;
+  stampRateLimit(batch, userId, 'writing');
+
+  try {
+    await batch.commit();
+  } catch (e) {
+    if (isPermissionDenied(e)) throw new Error(COOLDOWN_MESSAGE.writing);
+    throw e;
+  }
+  return writingRef.id;
 }
 
 export async function getWritingById(id: string): Promise<Writing | null> {

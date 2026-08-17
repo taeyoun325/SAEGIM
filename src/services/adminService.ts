@@ -86,14 +86,20 @@ export async function getTodayStats(): Promise<DailyStats> {
 }
 
 export interface ActiveUserMetrics {
+  // 앱을 연 사용자 기준(실제 DAU/WAU/MAU)
   dau: number;
   wau: number;
   mau: number;
+  // 글을 쓴 사용자 기준
+  writerDau: number;
+  writerWau: number;
+  writerMau: number;
+  // 최근 30일 퍼널 이벤트 합계
+  events: Record<string, number>;
 }
 
-// DAU/WAU/MAU. dailyStats의 activeUserIds를 기간별로 합집합해 중복 없이 센다.
-// ⚠️ activeUserIds는 recordTodayWriting에서만 채워지므로 "글을 쓴 사용자" 기준이다.
-// (앱을 열기만 한 사용자는 집계되지 않는다 — 그건 분석 이벤트 수집이 있어야 한다.)
+// DAU/WAU/MAU. dailyStats의 uid 배열을 기간별로 합집합해 중복 없이 센다.
+// openUserIds = 앱을 연 사람(실제 DAU), activeUserIds = 글을 쓴 사람.
 // 최근 30일 문서를 날짜 범위 쿼리 한 번으로 가져온다(최대 30 read).
 export async function getActiveUserMetrics(): Promise<ActiveUserMetrics> {
   const today = todayDateString();
@@ -104,19 +110,34 @@ export async function getActiveUserMetrics(): Promise<ActiveUserMetrics> {
     query(collection(db, dailyStatsCol), where('date', '>=', monthFrom), where('date', '<=', today))
   );
 
-  const dau = new Set<string>();
-  const wau = new Set<string>();
-  const mau = new Set<string>();
+  const open = { d: new Set<string>(), w: new Set<string>(), m: new Set<string>() };
+  const writer = { d: new Set<string>(), w: new Set<string>(), m: new Set<string>() };
+  const events: Record<string, number> = {};
+
+  const collect = (bucket: typeof open, ids: string[], date: string) => {
+    ids.forEach((id) => bucket.m.add(id));
+    if (date >= weekFrom) ids.forEach((id) => bucket.w.add(id));
+    if (date === today) ids.forEach((id) => bucket.d.add(id));
+  };
 
   snap.docs.forEach((d) => {
     const stats = d.data() as DailyStats;
-    const ids = stats.activeUserIds ?? [];
-    ids.forEach((id) => mau.add(id));
-    if (stats.date >= weekFrom) ids.forEach((id) => wau.add(id));
-    if (stats.date === today) ids.forEach((id) => dau.add(id));
+    collect(open, stats.openUserIds ?? [], stats.date);
+    collect(writer, stats.activeUserIds ?? [], stats.date);
+    Object.entries(stats.events ?? {}).forEach(([name, count]) => {
+      events[name] = (events[name] ?? 0) + count;
+    });
   });
 
-  return { dau: dau.size, wau: wau.size, mau: mau.size };
+  return {
+    dau: open.d.size,
+    wau: open.w.size,
+    mau: open.m.size,
+    writerDau: writer.d.size,
+    writerWau: writer.w.size,
+    writerMau: writer.m.size,
+    events,
+  };
 }
 
 // 가입 → 첫 글 작성 전환율. writingCount가 프로필에 이미 있어 추가 조회 없이 계산된다.

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
+import { colors, isDarkMode } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
@@ -22,6 +23,22 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // 시작화면이 깜빡이고 사라지지 않도록 최소 노출 시간을 둔다.
 const MIN_SPLASH_MS = 1600;
 
+// 스택 헤더/화면 배경은 React Navigation이 자기 테마로 칠하므로,
+// 앱 색 토큰을 넘겨줘야 다크모드에서 헤더만 하얗게 남지 않는다.
+const base = isDarkMode ? DarkTheme : DefaultTheme;
+const navigationTheme = {
+  ...base,
+  colors: {
+    ...base.colors,
+    background: colors.background,
+    card: colors.card,
+    text: colors.text,
+    border: colors.border,
+    primary: colors.primary,
+    notification: colors.danger,
+  },
+};
+
 export default function RootNavigator() {
   const { user, loading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
@@ -36,7 +53,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       {!user ? (
         <AuthNavigator />
       ) : (

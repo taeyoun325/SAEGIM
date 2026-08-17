@@ -7,7 +7,14 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import {
   getFirestore, doc, setDoc, getDoc, addDoc, collection, updateDoc, deleteDoc,
   query, where, orderBy, limit, getDocs, runTransaction, increment,
+  writeBatch, serverTimestamp,
 } from 'firebase/firestore';
+
+// 도배 방지 규칙: 글/댓글 생성은 같은 배치에서 쿨다운 문서를 서버 시각으로 갱신해야 통과한다.
+// (앱의 src/services/rateLimitService.ts와 동일한 동작을 테스트에서도 재현한다.)
+function stampRateLimit(batch, db, uid, action) {
+  batch.set(doc(db, 'rateLimits', uid, 'actions', action), { at: serverTimestamp() });
+}
 
 const env = Object.fromEntries(
   readFileSync(new URL('../.env', import.meta.url), 'utf8')
@@ -116,10 +123,16 @@ async function main() {
 
   // --- A가 글 작성 (비공개) ---
   const lines = ['E2E 첫 번째 줄', 'E2E 두 번째 줄', 'E2E 세 번째 줄'];
-  const wRef = await addDoc(collection(A.db, 'writings'), {
-    userId: ua.uid, promptId, lines, createdAt: Date.now(), updatedAt: Date.now(),
-    visibility: 'private', postId: null,
-  });
+  const wRef = doc(collection(A.db, 'writings'));
+  {
+    const batch = writeBatch(A.db);
+    batch.set(wRef, {
+      userId: ua.uid, promptId, lines, createdAt: Date.now(), updatedAt: Date.now(),
+      visibility: 'private', postId: null,
+    });
+    stampRateLimit(batch, A.db, ua.uid, 'writing');
+    await batch.commit();
+  }
   check('A 글 저장(비공개)', !!wRef.id);
 
   // --- B는 A의 비공개 글을 볼 수 없어야 함 ---
@@ -200,11 +213,17 @@ async function main() {
   });
 
   // --- B가 댓글 작성 ---
-  const cRef = await addDoc(collection(B.db, 'comments'), {
-    postId: postRef.id, userId: ub.uid, authorNickname: 'E2E테스터B',
-    content: 'E2E 댓글입니다', createdAt: Date.now(),
-  });
-  await updateDoc(doc(B.db, 'posts', postRef.id), { commentCount: increment(1) });
+  const cRef = doc(collection(B.db, 'comments'));
+  {
+    const batch = writeBatch(B.db);
+    batch.set(cRef, {
+      postId: postRef.id, userId: ub.uid, authorNickname: 'E2E테스터B',
+      content: 'E2E 댓글입니다', createdAt: Date.now(),
+    });
+    batch.update(doc(B.db, 'posts', postRef.id), { commentCount: increment(1) });
+    stampRateLimit(batch, B.db, ub.uid, 'comment');
+    await batch.commit();
+  }
   ps = await getDoc(doc(B.db, 'posts', postRef.id));
   check('B 댓글 작성 + 카운트', !!cRef.id && ps.data().commentCount === 1, `commentCount=${ps.data().commentCount}`);
 

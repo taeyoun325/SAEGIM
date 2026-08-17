@@ -25,6 +25,7 @@ import { useDialog } from '../context/DialogContext';
 import { COMMENT_MAX_LENGTH } from '../constants/config';
 import { getUserProfile } from '../services/userService';
 import { shareAsImage } from '../services/shareService';
+import { logEvent } from '../services/statsService';
 import ShareCard from '../components/ShareCard';
 import ShareThemeModal from '../components/ShareThemeModal';
 import { ShareTheme, DEFAULT_SHARE_THEME } from '../constants/shareThemes';
@@ -110,7 +111,9 @@ export default function PostDetailScreen() {
   async function handleToggleSave() {
     if (!user || !post) return;
     try {
-      setSaved(await toggleSave(post.id, user.uid));
+      const nowSaved = await toggleSave(post.id, user.uid);
+      setSaved(nowSaved);
+      if (nowSaved) logEvent('post_save').catch(() => {});
     } catch (e) {
       await notify('오류', '저장 처리에 실패했어요.');
     }
@@ -118,6 +121,7 @@ export default function PostDetailScreen() {
 
   function handleShare() {
     if (!post) return;
+    logEvent('share_open').catch(() => {});
     setThemeModalVisible(true);
   }
 
@@ -130,9 +134,11 @@ export default function PostDetailScreen() {
   useEffect(() => {
     if (!pendingShare || !post) return;
     setPendingShare(false);
-    shareAsImage(shareCardRef, `saegim-${post.id}`).catch(async () => {
-      await notify('오류', '공유 이미지를 만들지 못했어요.');
-    });
+    shareAsImage(shareCardRef, `saegim-${post.id}`)
+      .then(() => logEvent('share_done').catch(() => {}))
+      .catch(async () => {
+        await notify('오류', '공유 이미지를 만들지 못했어요.');
+      });
   }, [pendingShare, post, notify]);
 
   async function handleAddComment() {

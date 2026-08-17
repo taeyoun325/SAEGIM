@@ -18,6 +18,7 @@ import { createWriting, getMyWritingForPrompt, validateLines, updateWritingConte
 import { publishWriting, unpublishPost, updatePostContent } from '../services/postService';
 import { recordTodayWriting, adjustPublicPostCount } from '../services/userService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
+import { logEvent } from '../services/statsService';
 import { saveDraft, loadDraft, clearDraft, isPromptRevealed, markPromptRevealed } from '../services/draftService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
@@ -46,6 +47,7 @@ export default function TodayScreen() {
   const [themeModalVisible, setThemeModalVisible] = useState(false);
   const [pendingShare, setPendingShare] = useState(false);
   const shareCardRef = useRef<View>(null);
+  const writeStartLogged = useRef(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -91,7 +93,17 @@ export default function TodayScreen() {
 
   async function handleReveal() {
     setRevealed(true);
+    logEvent('prompt_reveal').catch(() => {});
     if (user && prompt) await markPromptRevealed(user.uid, prompt.id);
+  }
+
+  // 글쓰기 시작은 세션당 한 번만 남긴다(타이핑마다 쓰면 비용이 커진다).
+  function handleChangeText(next: string) {
+    if (!writeStartLogged.current && next.trim().length > 0) {
+      writeStartLogged.current = true;
+      logEvent('write_start').catch(() => {});
+    }
+    setText(next);
   }
 
   async function onRefresh() {
@@ -160,14 +172,17 @@ export default function TodayScreen() {
       await clearDraft(user.uid, prompt.id);
       setDraftRestored(false);
       await refreshProfile();
+      logEvent(publish ? 'publish' : 'write_save').catch(() => {});
       if (newBadges.length > 0) {
+        logEvent('badge_earned').catch(() => {});
         const b = newBadges[0];
         await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
       } else {
         await notify(publish ? '게시했어요.' : '새겼어요.', '오늘의 생각을 새겼어요.');
       }
-    } catch (e) {
-      setError(publish ? '게시에 실패했어요. 다시 시도해주세요.' : '저장에 실패했어요. 다시 시도해주세요.');
+    } catch (e: any) {
+      // 도배 방지 쿨다운처럼 이유가 분명한 오류는 그 메시지를 그대로 보여준다.
+      setError(e?.message || (publish ? '게시에 실패했어요. 다시 시도해주세요.' : '저장에 실패했어요. 다시 시도해주세요.'));
     } finally {
       setSaving(false);
     }
@@ -175,6 +190,7 @@ export default function TodayScreen() {
 
   function handleShare() {
     if (!writing) return;
+    logEvent('share_open').catch(() => {});
     setThemeModalVisible(true);
   }
 
@@ -187,9 +203,11 @@ export default function TodayScreen() {
   useEffect(() => {
     if (!pendingShare || !writing) return;
     setPendingShare(false);
-    shareAsImage(shareCardRef, `saegim-${writing.id}`).catch(async () => {
-      await notify('오류', '공유 이미지를 만들지 못했어요.');
-    });
+    shareAsImage(shareCardRef, `saegim-${writing.id}`)
+      .then(() => logEvent('share_done').catch(() => {}))
+      .catch(async () => {
+        await notify('오류', '공유 이미지를 만들지 못했어요.');
+      });
   }, [pendingShare, writing, notify]);
 
   async function handleUnpublish() {
@@ -274,7 +292,7 @@ export default function TodayScreen() {
             placeholderTextColor={colors.textSoft}
             value={text}
             maxLength={WRITING_TOTAL_MAX_LENGTH}
-            onChangeText={setText}
+            onChangeText={handleChangeText}
             multiline
             textAlignVertical="top"
           />

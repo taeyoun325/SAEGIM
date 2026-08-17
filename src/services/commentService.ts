@@ -1,21 +1,23 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
   DocumentSnapshot,
   getDocs,
+  increment,
   limit,
   orderBy,
   query,
   startAfter,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Comment } from '../types/models';
 import { COMMENT_MAX_LENGTH, COMMENT_PAGE_SIZE } from '../constants/config';
 import { adjustCommentCount } from './postService';
 import { bumpDailyStats } from './statsService';
+import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
 
 const commentsCol = 'comments';
 
@@ -29,16 +31,30 @@ export function validateComment(content: string): { valid: boolean; reason?: str
 export async function addComment(postId: string, userId: string, authorNickname: string, content: string): Promise<string> {
   const { valid, reason } = validateComment(content);
   if (!valid) throw new Error(reason);
-  const docRef = await addDoc(collection(db, commentsCol), {
+
+  // 댓글 + 댓글 수 + 쿨다운 기록을 한 배치로 묶는다.
+  // 도배 방지 규칙이 같은 커밋에서 쿨다운 문서가 갱신됐는지를 확인하므로 배치가 필수다.
+  const commentRef = doc(collection(db, commentsCol));
+  const batch = writeBatch(db);
+  batch.set(commentRef, {
     postId,
     userId,
     authorNickname,
     content: content.trim(),
     createdAt: Date.now(),
   } satisfies Omit<Comment, 'id'>);
-  await adjustCommentCount(postId, 1);
+  batch.update(doc(db, 'posts', postId), { commentCount: increment(1) });
+  stampRateLimit(batch, userId, 'comment');
+
+  try {
+    await batch.commit();
+  } catch (e) {
+    if (isPermissionDenied(e)) throw new Error(COOLDOWN_MESSAGE.comment);
+    throw e;
+  }
+
   bumpDailyStats({ commentsCount: 1 }).catch(() => {});
-  return docRef.id;
+  return commentRef.id;
 }
 
 export interface CommentPage {

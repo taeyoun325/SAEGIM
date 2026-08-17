@@ -13,8 +13,13 @@ import { auth } from '../config/firebase';
 import { createUserProfile, getUserProfile } from '../services/userService';
 import { reserveNickname } from '../services/nicknameService';
 import { deleteAllUserContent } from '../services/accountService';
+import { logEvent } from '../services/statsService';
 import { UserProfile } from '../types/models';
 import { validateNickname } from '../utils/nickname';
+
+// app_open은 앱 실행당 한 번만 남긴다. onAuthStateChanged는 토큰 갱신 등으로도
+// 여러 번 불릴 수 있어 모듈 스코프 플래그로 중복을 막는다.
+let appOpenLogged = false;
 
 // 계정 삭제 시 비밀번호 재확인이 필요할 때 화면에서 구분할 수 있도록 쓰는 에러 코드.
 export const REAUTH_REQUIRED = 'REAUTH_REQUIRED';
@@ -43,6 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         const p = await getUserProfile(firebaseUser.uid);
         setProfile(p);
+        if (!appOpenLogged) {
+          appOpenLogged = true;
+          logEvent('app_open', firebaseUser.uid).catch(() => {});
+        }
       } else {
         setProfile(null);
       }

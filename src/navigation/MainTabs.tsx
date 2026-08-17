@@ -59,7 +59,15 @@ export default function MainTabs() {
             }
           : {
               tabBarItemStyle: { paddingHorizontal: 0 },
-              tabBarStyle: { height: 60, paddingBottom: 6, paddingTop: 4 },
+              // 배경색을 지정하지 않으면 React Navigation 기본값(흰색)이 남아
+              // 다크모드에서 하단 탭바만 하얗게 뜬다.
+              tabBarStyle: {
+                height: 60,
+                paddingBottom: 6,
+                paddingTop: 4,
+                backgroundColor: colors.card,
+                borderTopColor: colors.border,
+              },
             }),
       })}
     >

@@ -22,6 +22,19 @@ interface Revisit {
   rate: number;
 }
 
+// 앱 실행 → 글감 확인 → 글쓰기 시작 → 게시 → 공유로 이어지는 핵심 흐름.
+const FUNNEL_STEPS: { key: string; label: string }[] = [
+  { key: 'app_open', label: '앱 실행' },
+  { key: 'prompt_reveal', label: '글감 확인' },
+  { key: 'write_start', label: '글쓰기 시작' },
+  { key: 'write_save', label: '새기기(비공개)' },
+  { key: 'publish', label: '게시하기' },
+  { key: 'share_open', label: '공유 카드 열기' },
+  { key: 'share_done', label: '공유 완료' },
+  { key: 'post_save', label: '남의 글 저장' },
+  { key: 'badge_earned', label: '배지 획득' },
+];
+
 export default function AdminDashboardScreen() {
   const { notify } = useDialog();
   const [stats, setStats] = useState<DailyStats | null>(null);
@@ -109,12 +122,40 @@ export default function AdminDashboardScreen() {
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>활동 사용자</Text>
-          <Text style={styles.sectionHint}>글을 쓴 사용자 기준(중복 제외). 앱을 열기만 한 사용자는 포함되지 않아요.</Text>
+          <Text style={styles.sectionHint}>앱을 연 사용자 기준(중복 제외).</Text>
           <View style={styles.grid}>
             <StatCard label="DAU (오늘)" value={activeUsers?.dau ?? 0} />
             <StatCard label="WAU (7일)" value={activeUsers?.wau ?? 0} />
             <StatCard label="MAU (30일)" value={activeUsers?.mau ?? 0} />
           </View>
+          <Text style={[styles.sectionHint, { marginTop: spacing.sm }]}>글을 쓴 사용자만 따로 보면:</Text>
+          <View style={styles.grid}>
+            <StatCard label="작성 DAU" value={activeUsers?.writerDau ?? 0} />
+            <StatCard label="작성 WAU" value={activeUsers?.writerWau ?? 0} />
+            <StatCard label="작성 MAU" value={activeUsers?.writerMau ?? 0} />
+          </View>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>퍼널 (최근 30일)</Text>
+          <Text style={styles.sectionHint}>어디에서 이탈하는지 보는 지표. 위에서 아래로 갈수록 줄어드는 게 정상이에요.</Text>
+          {FUNNEL_STEPS.map((step) => {
+            const count = activeUsers?.events?.[step.key] ?? 0;
+            const base = activeUsers?.events?.[FUNNEL_STEPS[0].key] ?? 0;
+            const pct = base > 0 ? Math.round((count / base) * 100) : 0;
+            return (
+              <View key={step.key} style={styles.funnelRow}>
+                <Text style={styles.funnelLabel}>{step.label}</Text>
+                <View style={styles.funnelBarTrack}>
+                  <View style={[styles.funnelBarFill, { width: `${Math.min(pct, 100)}%` }]} />
+                </View>
+                <Text style={styles.funnelValue}>
+                  {count}
+                  {base > 0 ? ` · ${pct}%` : ''}
+                </Text>
+              </View>
+            );
+          })}
 
           <View style={styles.divider} />
 
@@ -212,6 +253,11 @@ const styles = StyleSheet.create({
   refreshButtonText: { color: colors.primary, fontWeight: '700' },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
   sectionHint: { color: colors.textSoft, fontSize: 11, marginTop: -spacing.xs, marginBottom: spacing.sm, lineHeight: 16 },
+  funnelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
+  funnelLabel: { color: colors.text, fontSize: 12, width: 96 },
+  funnelBarTrack: { flex: 1, height: 14, backgroundColor: colors.border, borderRadius: radius.full, overflow: 'hidden' },
+  funnelBarFill: { height: '100%', backgroundColor: colors.accent, borderRadius: radius.full },
+  funnelValue: { color: colors.textSoft, fontSize: 11, width: 70, textAlign: 'right' },
   input: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,

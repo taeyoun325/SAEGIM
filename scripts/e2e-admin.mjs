@@ -6,7 +6,7 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import {
   getFirestore, doc, setDoc, getDoc, addDoc, collection, deleteDoc,
-  query, where, orderBy, limit, getDocs, updateDoc,
+  query, where, orderBy, limit, getDocs, updateDoc, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import admin from 'firebase-admin';
 import { getFirestore as adminFirestore } from 'firebase-admin/firestore';
@@ -65,10 +65,17 @@ async function main() {
   }
 
   // --- 일반 사용자가 게시물 작성 (신고 대상) ---
-  const wRef = await addDoc(collection(nDb, 'writings'), {
-    userId: nUid, promptId, lines: ['신고 대상 테스트 글'], createdAt: Date.now(),
-    updatedAt: Date.now(), visibility: 'private', postId: null,
-  });
+  // 도배 방지 규칙상 글 생성은 같은 배치에서 쿨다운 문서를 서버 시각으로 갱신해야 통과한다.
+  const wRef = doc(collection(nDb, 'writings'));
+  {
+    const batch = writeBatch(nDb);
+    batch.set(wRef, {
+      userId: nUid, promptId, lines: ['신고 대상 테스트 글'], createdAt: Date.now(),
+      updatedAt: Date.now(), visibility: 'private', postId: null,
+    });
+    batch.set(doc(nDb, 'rateLimits', nUid, 'actions', 'writing'), { at: serverTimestamp() });
+    await batch.commit();
+  }
   const postRef = await addDoc(collection(nDb, 'posts'), {
     writingId: wRef.id, userId: nUid, promptId, lines: ['신고 대상 테스트 글'],
     createdAt: Date.now(), likeCount: 0, commentCount: 0,

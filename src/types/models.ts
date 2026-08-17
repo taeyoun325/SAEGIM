@@ -84,7 +84,9 @@ export interface DailyStats {
   date: string; // "2026-08-17"
   newSignups: number;
   writingsCount: number;
-  activeUserIds: string[];
+  activeUserIds: string[]; // 그날 글을 쓴 사용자
   commentsCount: number;
   likesCount: number;
+  openUserIds?: string[]; // 그날 앱을 연 사용자(실제 DAU 기준)
+  events?: Record<string, number>; // 퍼널 이벤트 카운터
 }
