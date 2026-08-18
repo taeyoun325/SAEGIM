@@ -28,6 +28,7 @@ import { todayDateString, yearsAgoPromptId } from '../utils/date';
 import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
+import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
 import { useShare } from '../context/ShareContext';
 
 export default function TodayScreen() {
@@ -44,6 +45,7 @@ export default function TodayScreen() {
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [memoryWriting, setMemoryWriting] = useState<Writing | null>(null);
+  const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
   const writeStartLogged = useRef(false);
 
   const load = useCallback(async () => {
@@ -190,8 +192,7 @@ export default function TodayScreen() {
       }
       if (newBadges.length > 0) {
         logEvent('badge_earned').catch(() => {});
-        const b = newBadges[0];
-        await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
+        setCelebrationBadge(newBadges[0]);
       } else if (!freezeUsed) {
         await notify(publish ? '게시했어요.' : '새겼어요.', '오늘의 생각을 새겼어요.');
       }
@@ -336,6 +337,7 @@ export default function TodayScreen() {
       )}
       <BackgroundMascot source={require('../assets/mascot-today.png')} />
       </ScrollView>
+      <BadgeCelebrationModal badge={celebrationBadge} onClose={() => setCelebrationBadge(null)} />
     </View>
   );
 }

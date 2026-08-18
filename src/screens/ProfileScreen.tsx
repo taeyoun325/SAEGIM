@@ -12,10 +12,11 @@ import { getUserPublicPosts } from '../services/postService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
-import { BADGE_DEFS } from '../constants/badges';
+import { BADGE_DEFS, BadgeDef } from '../constants/badges';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
+import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -48,8 +50,7 @@ export default function ProfileScreen() {
         const { newBadges } = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
         if (newBadges.length > 0) {
           await refreshProfile();
-          const b = newBadges[0];
-          await notify(`${b.emoji} 새 배지 획득!`, `"${b.name}" 배지를 얻었어요. ${b.description}`);
+          setCelebrationBadge(newBadges[0]);
         }
       }
     } finally {
@@ -214,6 +215,7 @@ export default function ProfileScreen() {
         )}
         ListFooterComponent={<BackgroundMascot source={require('../assets/mascot-profile.png')} />}
       />
+      <BadgeCelebrationModal badge={celebrationBadge} onClose={() => setCelebrationBadge(null)} />
     </View>
   );
 }
