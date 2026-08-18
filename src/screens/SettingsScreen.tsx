@@ -7,7 +7,14 @@ import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius, ThemePreference } from '../constants/theme';
 import { loadThemePreference, saveThemePreference, canReloadForTheme, reloadForTheme } from '../services/themeService';
-import { isReminderEnabled, enableDailyReminder, disableDailyReminder } from '../services/notificationService';
+import {
+  isReminderEnabled,
+  enableDailyReminder,
+  disableDailyReminder,
+  getReminderTime,
+  changeReminderTime,
+  ReminderTime,
+} from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
 import { updateUserProfile } from '../services/userService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
@@ -22,11 +29,22 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; emoji: string }[] 
   { value: 'dark', label: '다크', emoji: '🌙' },
 ];
 
+// 사람마다 하루를 정리하는 시간이 다르니 몇 가지 대표적인 시간대만 고를 수 있게 한다.
+// 분 단위 커스텀 입력은 이 정도 알림 기능치고 과한 선택지라 대표 시간대로 좁혔다.
+const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] = [
+  { hour: 9, minute: 0, label: '오전 9시' },
+  { hour: 12, minute: 0, label: '낮 12시' },
+  { hour: 18, minute: 0, label: '오후 6시' },
+  { hour: 20, minute: 0, label: '오후 8시' },
+  { hour: 22, minute: 0, label: '오후 10시' },
+];
+
 export default function SettingsScreen() {
   const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
+  const [reminderTime, setReminderTimeState] = useState<ReminderTime>({ hour: 20, minute: 0 });
   const [admin, setAdmin] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>('system');
 
@@ -56,6 +74,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     isReminderEnabled().then(setReminderOn);
+    getReminderTime().then(setReminderTimeState);
   }, []);
 
   // 관리자 메뉴는 admins 컬렉션에 등록된 계정에만 보인다.
@@ -79,6 +98,12 @@ export default function SettingsScreen() {
       await disableDailyReminder();
     }
     setReminderOn(next);
+  }
+
+  async function selectReminderTime(time: ReminderTime) {
+    if (time.hour === reminderTime.hour && time.minute === reminderTime.minute) return;
+    setReminderTimeState(time);
+    await changeReminderTime(time);
   }
 
   async function confirmDeleteAccount() {
@@ -124,9 +149,28 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <View style={styles.reminderRow}>
-          <Text style={styles.rowButtonText}>매일 저녁 8시 알림</Text>
+          <Text style={styles.rowButtonText}>매일 글감 알림</Text>
           <Switch value={reminderOn} onValueChange={toggleReminder} />
         </View>
+        {reminderOn && Platform.OS !== 'web' && (
+          <View style={styles.reminderTimeSection}>
+            <Text style={styles.categoryHint}>알림 시간</Text>
+            <View style={styles.categoryRow}>
+              {REMINDER_TIME_OPTIONS.map((opt) => {
+                const selected = opt.hour === reminderTime.hour && opt.minute === reminderTime.minute;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[styles.categoryChip, selected && styles.categoryChipSelected]}
+                    onPress={() => selectReminderTime(opt)}
+                  >
+                    <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -223,6 +267,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   reminderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
+  reminderTimeSection: { paddingBottom: spacing.md },
   rowButton: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   rowButtonNoBorder: { borderBottomWidth: 0 },
   rowButtonText: { color: colors.text, fontSize: 15 },
