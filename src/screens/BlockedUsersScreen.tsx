@@ -1,14 +1,45 @@
-import { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useCallback, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Text from '../components/Text';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing } from '../constants/theme';
-import { unblockUser } from '../services/userService';
+import { unblockUser, getDisplayProfile } from '../services/userService';
 
 export default function BlockedUsersScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [nicknames, setNicknames] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const blockedIds = profile?.blockedUserIds ?? [];
+
+  // UID만으로는 누구를 차단했는지 알아볼 수 없어 해제 여부를 판단하기 어려웠다.
+  // 목록을 열 때마다 닉네임을 조회해 채운다(캐시되므로 반복 조회 비용은 작다).
+  const loadNicknames = useCallback(async () => {
+    if (blockedIds.length === 0) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const entries = await Promise.all(
+        blockedIds.map(async (uid) => {
+          const p = await getDisplayProfile(uid);
+          return [uid, p?.nickname ?? '탈퇴한 사용자'] as const;
+        })
+      );
+      setNicknames(Object.fromEntries(entries));
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.blockedUserIds?.join(',')]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNicknames();
+    }, [loadNicknames])
+  );
 
   async function handleUnblock(targetUid: string) {
     if (!user) return;
@@ -19,6 +50,14 @@ export default function BlockedUsersScreen() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
 
   return (
@@ -34,7 +73,7 @@ export default function BlockedUsersScreen() {
       }
       renderItem={({ item }) => (
         <View style={styles.row}>
-          <Text style={styles.uid}>{item}</Text>
+          <Text style={styles.nickname}>{nicknames[item] ?? '...'}</Text>
           <TouchableOpacity onPress={() => handleUnblock(item)} disabled={busyId === item}>
             <Text style={styles.unblockText}>{busyId === item ? '처리 중...' : '차단 해제'}</Text>
           </TouchableOpacity>
@@ -46,9 +85,10 @@ export default function BlockedUsersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   list: { padding: spacing.lg },
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  uid: { color: colors.textSoft, fontSize: 12 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  nickname: { color: colors.text, fontSize: 15, fontWeight: '600' },
   unblockText: { color: colors.primary, fontWeight: '600' },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyText: { color: colors.textSoft },
