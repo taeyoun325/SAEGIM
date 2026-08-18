@@ -9,6 +9,14 @@ import {
   query, where, orderBy, limit, getDocs, runTransaction, increment,
   writeBatch, serverTimestamp,
 } from 'firebase/firestore';
+import admin from 'firebase-admin';
+import { getFirestore as adminFirestore } from 'firebase-admin/firestore';
+
+// reports 문서는 본인도 못 지운다(allow delete: if isAdmin()). 이 스크립트는 클라이언트
+// SDK만으로 사용자 흐름을 검증하는 게 목적이지만, 테스트가 남긴 신고 문서만큼은
+// Admin SDK로 정리하지 않으면 실행할 때마다 대기 중 신고가 계속 쌓인다.
+admin.initializeApp({ credential: admin.cert(JSON.parse(readFileSync(new URL('../serviceAccountKey.json', import.meta.url), 'utf8'))) });
+const adb = adminFirestore();
 
 // 도배 방지 규칙: 글/댓글 생성은 같은 배치에서 쿨다운 문서를 서버 시각으로 갱신해야 통과한다.
 // (앱의 src/services/rateLimitService.ts와 동일한 동작을 테스트에서도 재현한다.)
@@ -279,7 +287,7 @@ async function main() {
   }
 
   // --- B가 신고 ---
-  await addDoc(collection(B.db, 'reports'), {
+  const reportRef = await addDoc(collection(B.db, 'reports'), {
     targetType: 'post', targetId: postRef.id, reporterId: ub.uid,
     reason: 'spam', detail: 'e2e', createdAt: Date.now(), status: 'pending',
   });
@@ -347,6 +355,7 @@ async function main() {
 
   await deleteDoc(doc(A.db, 'users', ua.uid)).catch(() => {});
   await deleteDoc(doc(B.db, 'users', ub.uid)).catch(() => {});
+  await adb.collection('reports').doc(reportRef.id).delete().catch(() => {});
   await A.auth.currentUser?.delete().catch(() => {});
   await B.auth.currentUser?.delete().catch(() => {});
   check('계정 삭제(정리)', true);

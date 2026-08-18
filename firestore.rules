@@ -70,6 +70,20 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
+    // 관리자가 신고된 글을 지울 때 postService.deletePost가 원본 writing을
+    // 비공개로 되돌리고 postId 연결을 끊는다(작성자 본인이 지울 때와 같은 마무리 단계).
+    // 이 필드 두 개만 정확히 그 값으로 바뀌는 요청만 허용하고, 본문/작성자 등은 절대 못 바꾸게 한다
+    // — 관리자가 남의 비공개 글 내용을 고쳐 쓰는 길을 열어주지 않기 위해서다.
+    function adminResettingWritingVisibility() {
+      return isAdmin()
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.promptId == resource.data.promptId
+        && request.resource.data.lines == resource.data.lines
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.visibility == 'private'
+        && request.resource.data.postId == null;
+    }
+
     // 글(Writing): 비공개 글은 작성자만 조회, 본인 글만 생성/수정.
     // 생성은 60초 쿨다운. 앱은 글감당 한 편만 쓰게 하지만, 규칙만으로는 그걸 강제할 수 없어
     // (쿼리를 못 하므로) 최소한 스크립트로 대량 생성하는 것을 막는다.
@@ -78,7 +92,8 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && withinCooldown('writing', 60);
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || adminResettingWritingVisibility());
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 

@@ -59,9 +59,10 @@ export default function AdminReportsScreen() {
     });
     if (!ok) return;
 
+    if (!user) return;
     setBusyId(report.id);
     try {
-      await deleteReportedContent(report);
+      await deleteReportedContent(report, user.uid);
       setReports((prev) => prev.filter((r) => r.id !== report.id));
     } catch (e) {
       await notify('오류', '삭제에 실패했어요.');
@@ -71,9 +72,10 @@ export default function AdminReportsScreen() {
   }
 
   async function handleDismiss(report: ReportWithTarget) {
+    if (!user) return;
     setBusyId(report.id);
     try {
-      await dismissReport(report.id);
+      await dismissReport(report, user.uid);
       setReports((prev) => prev.filter((r) => r.id !== report.id));
     } catch (e) {
       await notify('오류', '처리에 실패했어요.');

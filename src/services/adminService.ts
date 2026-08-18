@@ -14,6 +14,7 @@ import { Comment, DailyStats, Post, Report, UserProfile } from '../types/models'
 import { todayDateString, timestampToDateString } from '../utils/date';
 import { deletePost, getPostById } from './postService';
 import { deleteComment } from './commentService';
+import { createNotification } from './inboxService';
 
 // 관리자 여부 확인. admins/{uid} 문서는 Admin SDK로만 생성되므로
 // 사용자가 스스로 관리자가 될 수는 없다.
@@ -185,8 +186,20 @@ export async function getRevisitRate(
   return { eligibleCount: eligible.length, revisitedCount, rate: revisitedCount / eligible.length };
 }
 
+// 신고 대상이 걸려 있는 게시물 id를 찾는다. post 신고면 targetId 그대로,
+// comment 신고면 그 댓글이 달린 게시물 id를 조회해야 한다.
+// 신고 처리 결과를 알릴 때 어느 게시물에 대한 알림인지 남기는 데 쓴다.
+async function resolveReportPostId(report: Report): Promise<string | null> {
+  if (report.targetType === 'post') return report.targetId;
+  const snap = await getDoc(doc(db, 'comments', report.targetId));
+  return snap.exists() ? ((snap.data() as Comment).postId ?? null) : null;
+}
+
 // 신고된 콘텐츠를 삭제하고 신고를 처리 완료로 표시한다.
-export async function deleteReportedContent(report: Report): Promise<void> {
+// 신고자에게는 "처리됐다"는 결과를 알려준다 — 신고하고 나서 아무 반응이 없으면
+// 신고 기능 자체를 신뢰하지 않게 된다(신뢰·안전 UX의 기본 원칙).
+export async function deleteReportedContent(report: Report, adminUid: string): Promise<void> {
+  const postId = await resolveReportPostId(report);
   try {
     if (report.targetType === 'post') {
       const post = await getPostById(report.targetId);
@@ -201,9 +214,18 @@ export async function deleteReportedContent(report: Report): Promise<void> {
     // 이미 삭제된 콘텐츠일 수 있다. 신고 처리는 계속 진행한다.
   }
   await updateDoc(doc(db, 'reports', report.id), { status: 'reviewed' });
+  // 콘텐츠가 이미 지워졌으므로 postId를 못 찾은 경우(드묾)에는 알림을 보내지 않는다
+  // — AppNotification.postId는 필수 필드라 빈 값을 넣을 수 없다.
+  if (postId) {
+    createNotification(report.reporterId, adminUid, 'report_resolved', postId).catch(() => {});
+  }
 }
 
 // 문제가 없다고 판단한 신고를 기각한다.
-export async function dismissReport(reportId: string): Promise<void> {
-  await updateDoc(doc(db, 'reports', reportId), { status: 'dismissed' });
+export async function dismissReport(report: Report, adminUid: string): Promise<void> {
+  const postId = await resolveReportPostId(report);
+  await updateDoc(doc(db, 'reports', report.id), { status: 'dismissed' });
+  if (postId) {
+    createNotification(report.reporterId, adminUid, 'report_dismissed', postId).catch(() => {});
+  }
 }

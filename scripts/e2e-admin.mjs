@@ -82,9 +82,11 @@ async function main() {
   });
   check('신고 대상 게시물 생성', !!postRef.id);
 
-  // --- 관리자가 신고 접수 ---
-  const reportRef = await addDoc(collection(aDb, 'reports'), {
-    targetType: 'post', targetId: postRef.id, reporterId: aUid,
+  // --- 일반 사용자(nUid)가 신고 접수 ---
+  // 신고자를 관리자와 다른 사람으로 둬야, 신고 처리 후 신고자에게 알림이 가는지도
+  // 이 스크립트 안에서 함께 검증할 수 있다(같은 사람이면 자기 자신에게는 알림을 안 보낸다).
+  const reportRef = await addDoc(collection(nDb, 'reports'), {
+    targetType: 'post', targetId: postRef.id, reporterId: nUid,
     reason: 'spam', detail: 'e2e admin test', createdAt: Date.now(), status: 'pending',
   });
   check('신고 접수', !!reportRef.id);
@@ -152,6 +154,33 @@ async function main() {
   const deleted = await getDoc(doc(aDb, 'posts', postRef.id));
   check('관리자 신고 게시물 삭제', !deleted.exists());
 
+  // --- 관리자는 원본 writing을 비공개로 되돌리고 postId 연결을 끊을 수 있어야 한다 ---
+  // postService.deletePost가 자동으로 하는 마무리 단계인데, 예전 규칙은 작성자 본인만
+  // writings를 고칠 수 있어서 관리자가 신고 처리할 때 이 단계가 조용히 실패하고 있었다.
+  await updateDoc(doc(aDb, 'writings', wRef.id), { visibility: 'private', postId: null, updatedAt: Date.now() });
+  const writingAfter = await getDoc(doc(nDb, 'writings', wRef.id));
+  check(
+    '관리자의 writing 비공개 전환',
+    writingAfter.data().visibility === 'private' && writingAfter.data().postId === null
+  );
+
+  // --- 그 좁은 통로로도 본문(lines)까지 고쳐 쓰는 건 막혀야 한다(관리자 권한 남용 방지) ---
+  try {
+    await updateDoc(doc(aDb, 'writings', wRef.id), { lines: ['관리자가 몰래 바꿈'] });
+    check('관리자의 writing 본문 변조 차단', false, '변조됨(취약)');
+  } catch {
+    check('관리자의 writing 본문 변조 차단', true);
+  }
+
+  // --- 신고 처리 결과가 신고자(nUid)에게 인앱 알림으로 전달돼야 한다 ---
+  const notifRef = doc(collection(aDb, 'notifications'));
+  await setDoc(notifRef, {
+    recipientId: nUid, actorId: aUid, type: 'report_resolved',
+    postId: postRef.id, commentId: null, createdAt: Date.now(), read: false,
+  });
+  const notifAsReporter = await getDoc(doc(nDb, 'notifications', notifRef.id));
+  check('신고 처리 결과 알림이 신고자에게 도착', notifAsReporter.exists() && notifAsReporter.data().type === 'report_resolved');
+
   // --- 관리자는 신고 상태를 reviewed로 변경 가능 ---
   await updateDoc(doc(aDb, 'reports', reportRef.id), { status: 'reviewed' });
   const reviewed = await getDoc(doc(aDb, 'reports', reportRef.id));
@@ -168,6 +197,7 @@ async function main() {
   // --- 정리 ---
   await deleteDoc(doc(aDb, 'posts', otherPost.id)).catch(() => {});
   await deleteDoc(doc(nDb, 'writings', wRef.id)).catch(() => {});
+  await adb.collection('notifications').doc(notifRef.id).delete().catch(() => {});
   await adb.collection('reports').doc(reportRef.id).delete().catch(() => {});
   await adb.collection('admins').doc(aUid).delete().catch(() => {});
   await deleteDoc(doc(nDb, 'users', nUid)).catch(() => {});

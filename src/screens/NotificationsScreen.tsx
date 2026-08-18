@@ -17,11 +17,15 @@ interface Row extends AppNotification {
   actorNickname: string;
 }
 
+// post_*/comment_* 알림은 "OO님이 ~" 형태라 닉네임 뒤에 이어 붙는 문구를 담고,
+// report_* 알림은 상대방이 아니라 운영 처리 결과를 알리는 것이라 그 자체로 완결된 문장을 담는다.
 const MESSAGE: Record<AppNotification['type'], string> = {
   post_like: '님이 내 글에 좋아요를 눌렀어요',
   post_comment: '님이 내 글에 댓글을 남겼어요',
   comment_like: '님이 내 댓글에 좋아요를 눌렀어요',
   comment_reply: '님이 내 댓글에 답글을 남겼어요',
+  report_resolved: '신고하신 콘텐츠를 검토해 삭제했어요',
+  report_dismissed: '신고하신 콘텐츠를 검토했지만 문제가 없다고 판단했어요',
 };
 
 const ICON: Record<AppNotification['type'], string> = {
@@ -29,7 +33,12 @@ const ICON: Record<AppNotification['type'], string> = {
   post_comment: '💬',
   comment_like: '♥',
   comment_reply: '↩️',
+  report_resolved: '🛡️',
+  report_dismissed: '🛡️',
 };
+
+// report_resolved는 콘텐츠가 이미 삭제된 뒤라 게시물로 이동해봤자 볼 게 없다.
+const REPORT_TYPES = new Set<AppNotification['type']>(['report_resolved', 'report_dismissed']);
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<Nav>();
@@ -86,21 +95,30 @@ export default function NotificationsScreen() {
           <Text style={styles.emptyText}>아직 알림이 없어요.</Text>
         </View>
       }
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={[styles.row, !item.read && styles.rowUnread]}
-          onPress={() => navigation.navigate('PostDetail', { postId: item.postId })}
-        >
-          <Text style={styles.icon}>{ICON[item.type]}</Text>
-          <View style={styles.textCol}>
-            <Text style={styles.message}>
-              <Text style={styles.nickname}>{item.actorNickname}</Text>
-              {MESSAGE[item.type]}
-            </Text>
-            <Text style={styles.date}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
+      renderItem={({ item }) => {
+        const isReport = REPORT_TYPES.has(item.type);
+        return (
+          <TouchableOpacity
+            style={[styles.row, !item.read && styles.rowUnread]}
+            disabled={item.type === 'report_resolved'}
+            onPress={() => {
+              // report_dismissed는 콘텐츠가 그대로 남아 있어 이동이 의미 있지만,
+              // report_resolved는 이미 삭제된 뒤라 이동할 곳이 없다(disabled 처리).
+              if (item.type === 'report_resolved') return;
+              navigation.navigate('PostDetail', { postId: item.postId });
+            }}
+          >
+            <Text style={styles.icon}>{ICON[item.type]}</Text>
+            <View style={styles.textCol}>
+              <Text style={styles.message}>
+                {!isReport && <Text style={styles.nickname}>{item.actorNickname}</Text>}
+                {MESSAGE[item.type]}
+              </Text>
+              <Text style={styles.date}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }}
     />
   );
 }
