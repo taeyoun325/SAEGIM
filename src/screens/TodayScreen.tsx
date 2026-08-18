@@ -21,6 +21,7 @@ import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BadgeDef } from '../constants/badges';
 import { logEvent } from '../services/statsService';
 import { saveDraft, loadDraft, clearDraft, isPromptRevealed, markPromptRevealed } from '../services/draftService';
+import { containsSensitiveWord } from '../utils/textFilter';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { todayDateString, yearsAgoPromptId } from '../utils/date';
@@ -123,9 +124,12 @@ export default function TodayScreen() {
     }
 
     if (publish) {
+      const flagged = containsSensitiveWord(text);
       const ok = await confirm({
         title: '이 글을 공개할까요?',
-        message: '다른 사람들이 오늘의 글감 페이지에서 볼 수 있어요.',
+        message: flagged
+          ? '다른 사람들이 오늘의 글감 페이지에서 볼 수 있어요.\n⚠️ 다른 사람이 상처받을 수 있는 표현이 있는지 한 번 더 확인해보세요.'
+          : '다른 사람들이 오늘의 글감 페이지에서 볼 수 있어요.',
         confirmLabel: '게시하기',
       });
       if (!ok) return;

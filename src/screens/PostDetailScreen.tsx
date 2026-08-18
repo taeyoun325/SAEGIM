@@ -28,6 +28,7 @@ import { getDisplayProfile } from '../services/userService';
 import { logEvent } from '../services/statsService';
 import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { containsSensitiveWord } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -159,6 +160,15 @@ export default function PostDetailScreen() {
 
   async function handleAddComment() {
     if (!user || !post || !profile || !commentText.trim()) return;
+    if (containsSensitiveWord(commentText)) {
+      const ok = await confirm({
+        title: '잠깐, 다시 한번 확인해보세요',
+        message: '상대방이 상처받을 수 있는 표현이 있는 것 같아요. 그래도 남기시겠어요?',
+        confirmLabel: '그대로 남기기',
+        cancelLabel: '다시 쓰기',
+      });
+      if (!ok) return;
+    }
     setPosting(true);
     try {
       await addComment(post.id, user.uid, profile.nickname, commentText, {
