@@ -10,6 +10,7 @@ import PostDetailScreen from '../screens/PostDetailScreen';
 import OtherProfileScreen from '../screens/OtherProfileScreen';
 import ReportScreen from '../screens/ReportScreen';
 import BlockedUsersScreen from '../screens/BlockedUsersScreen';
+import MyReportsScreen from '../screens/MyReportsScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import AdminReportsScreen from '../screens/AdminReportsScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
@@ -64,6 +65,7 @@ export default function RootNavigator() {
           <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ title: '프로필' }} />
           <Stack.Screen name="Report" component={ReportScreen} options={{ title: '신고하기' }} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: '차단 목록' }} />
+          <Stack.Screen name="MyReports" component={MyReportsScreen} options={{ title: '내 신고 내역' }} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: '개인정보처리방침' }} />
           <Stack.Screen name="AdminReports" component={AdminReportsScreen} options={{ title: '신고 관리' }} />
           <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: '통계 대시보드' }} />

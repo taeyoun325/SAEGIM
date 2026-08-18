@@ -293,12 +293,20 @@ async function main() {
   });
   check('신고 접수', true);
 
-  // --- 신고 내역 열람 차단 ---
+  // --- 본인 신고 내역은 열람 가능(중복 신고 확인 + "내 신고 내역" 화면에 필요) ---
   try {
-    await getDocs(query(collection(B.db, 'reports'), where('reporterId', '==', ub.uid)));
-    check('신고 내역 클라이언트 열람 차단', false, '읽기가 허용됨(취약)');
+    const mine = await getDocs(query(collection(B.db, 'reports'), where('reporterId', '==', ub.uid)));
+    check('본인 신고 내역 열람 허용', mine.size >= 1);
   } catch {
-    check('신고 내역 클라이언트 열람 차단', true);
+    check('본인 신고 내역 열람 허용', false, '읽기가 차단됨(회귀)');
+  }
+
+  // --- 타인의 신고 내역은 여전히 열람 차단 ---
+  try {
+    await getDocs(query(collection(B.db, 'reports'), where('reporterId', '==', ua.uid)));
+    check('타인 신고 내역 열람 차단', false, '읽기가 허용됨(취약)');
+  } catch {
+    check('타인 신고 내역 열람 차단', true);
   }
 
   // --- B가 A를 차단 ---

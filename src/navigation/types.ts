@@ -17,6 +17,7 @@ export type RootStackParamList = {
   OtherProfile: { userId: string };
   Report: { targetType: 'post' | 'comment'; targetId: string };
   BlockedUsers: undefined;
+  MyReports: undefined;
   PrivacyPolicy: undefined;
   AdminReports: undefined;
   AdminDashboard: undefined;
