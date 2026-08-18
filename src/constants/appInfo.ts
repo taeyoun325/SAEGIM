@@ -11,4 +11,4 @@ export const CONTACT_EMAIL = 'saegimsemi@gmail.com';
 // docs/privacy.html을 GitHub Pages(main 브랜치 /docs 폴더)로 배포한 주소.
 export const PRIVACY_POLICY_URL = 'https://taeyoun325.github.io/SAEGIM/privacy.html';
 
-export const PRIVACY_POLICY_UPDATED_AT = '2026년 8월 12일';
+export const PRIVACY_POLICY_UPDATED_AT = '2026년 8월 19일';

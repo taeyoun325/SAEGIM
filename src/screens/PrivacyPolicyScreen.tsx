@@ -36,6 +36,7 @@ export default function PrivacyPolicyScreen() {
         • 공개한 게시물{'\n'}
         • 작성한 댓글{'\n'}
         • 누른 좋아요{'\n\n'}
+        계정을 삭제하기 전에 [내 새김 관리 → 내보내기]에서 그동안 새긴 생각을 텍스트 파일로 미리 내려받을 수 있습니다.{'\n\n'}
         단, 커뮤니티 안전을 위해 접수된 신고 기록은 신고 대상 식별을 위해 일정 기간 보관될 수 있습니다.
       </Section>
 
@@ -46,7 +47,8 @@ export default function PrivacyPolicyScreen() {
 
       <Section title="6. 문의">
         개인정보 관련 문의는 아래 이메일로 연락해주세요.{'\n\n'}
-        {CONTACT_EMAIL}
+        {CONTACT_EMAIL}{'\n\n'}
+        신고 처리 결과나 콘텐츠 삭제 등 커뮤니티 운영 조치에 이의가 있으신 경우도 같은 이메일로 알려주시면 다시 검토하겠습니다.
       </Section>
     </ScrollView>
   );
