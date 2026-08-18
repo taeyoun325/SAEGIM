@@ -73,6 +73,7 @@ export interface UserProfile {
   bestStreak: number;
   preferredCategories?: string[];
   streakFreezes?: number; // 하루 빠져도 연속 기록을 지켜주는 보호권
+  mutedKeywords?: string[]; // 이 단어가 들어간 글을 피드/캘린더에서 보이지 않게 한다
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

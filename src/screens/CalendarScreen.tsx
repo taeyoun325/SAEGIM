@@ -14,6 +14,7 @@ import PostCard from '../components/PostCard';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
+import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -80,7 +81,10 @@ export default function CalendarScreen() {
       const [prompt, feed] = await Promise.all([getPromptById(promptId), getPromptFeed(promptId, null, 'popular')]);
       setSelectedPrompt(prompt);
       const blockedIds = profile?.blockedUserIds ?? [];
-      setPopularPosts(feed.posts.filter((p) => !blockedIds.includes(p.userId)).slice(0, 5));
+      const mutedKeywords = profile?.mutedKeywords ?? [];
+      setPopularPosts(
+        feed.posts.filter((p) => !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords)).slice(0, 5)
+      );
     } finally {
       setDetailLoading(false);
     }

@@ -14,6 +14,7 @@ import TopBarButtons from '../components/TopBarButtons';
 import { RootStackParamList } from '../navigation/types';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -21,6 +22,7 @@ export default function FeedScreen() {
   const navigation = useNavigation<Nav>();
   const { user, profile } = useAuth();
   const blockedIds = profile?.blockedUserIds ?? [];
+  const mutedKeywords = profile?.mutedKeywords ?? [];
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   // 카드마다 좋아요 여부를 따로 묻지 않도록 한 쪽 분량을 한 번에 조회해 들고 있는다.
@@ -71,8 +73,12 @@ export default function FeedScreen() {
     setLoading(true);
   }
 
+  function isVisible(p: Post) {
+    return !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords);
+  }
+
   function handleRandomBrowse() {
-    const visible = posts.filter((p) => !blockedIds.includes(p.userId));
+    const visible = posts.filter(isVisible);
     if (visible.length === 0) return;
     const pick = visible[Math.floor(Math.random() * visible.length)];
     navigation.navigate('PostDetail', { postId: pick.id });
@@ -134,7 +140,7 @@ export default function FeedScreen() {
         </View>
       )}
       <FlatList
-        data={posts.filter((p) => !blockedIds.includes(p.userId))}
+        data={posts.filter(isVisible)}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

@@ -16,7 +16,7 @@ import {
   ReminderTime,
 } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
-import { updateUserProfile } from '../services/userService';
+import { updateUserProfile, muteKeyword, unmuteKeyword } from '../services/userService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
@@ -69,6 +69,25 @@ export default function SettingsScreen() {
     const current = profile.preferredCategories ?? [];
     const next = current.includes(category) ? current.filter((c) => c !== category) : [...current, category];
     await updateUserProfile(user.uid, { preferredCategories: next });
+    await refreshProfile();
+  }
+
+  async function handleAddMutedKeyword() {
+    if (!user) return;
+    const keyword = await prompt({
+      title: '뮤트할 단어',
+      message: '이 단어가 들어간 글은 피드/캘린더에서 보이지 않아요.',
+      placeholder: '예: 스포일러',
+      confirmLabel: '추가',
+    });
+    if (!keyword || !keyword.trim()) return;
+    await muteKeyword(user.uid, keyword);
+    await refreshProfile();
+  }
+
+  async function handleRemoveMutedKeyword(keyword: string) {
+    if (!user) return;
+    await unmuteKeyword(user.uid, keyword);
     await refreshProfile();
   }
 
@@ -219,6 +238,23 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>키워드 뮤트</Text>
+          <Text style={styles.categoryHint}>이 단어가 들어간 글은 피드/캘린더에서 보이지 않아요. 눌러서 해제해요.</Text>
+          <View style={styles.categoryRow}>
+            {(profile?.mutedKeywords ?? []).map((k) => (
+              <TouchableOpacity key={k} style={styles.mutedChip} onPress={() => handleRemoveMutedKeyword(k)}>
+                <Text style={styles.mutedChipText}>{k} ✕</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.addMutedChip} onPress={handleAddMutedKeyword}>
+              <Text style={styles.addMutedChipText}>+ 단어 추가</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
         <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('BlockedUsers')}>
           <Text style={styles.rowButtonText}>차단한 사용자 목록</Text>
         </TouchableOpacity>
@@ -300,4 +336,20 @@ const styles = StyleSheet.create({
   categoryChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   categoryChipText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
   categoryChipTextSelected: { color: '#fff' },
+  mutedChip: {
+    borderRadius: radius.full,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  mutedChipText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  addMutedChip: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  addMutedChipText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
 });
