@@ -107,13 +107,21 @@ export default function PostDetailScreen() {
     setLoading(true);
   }
 
+  // 차단한 사람의 댓글은 피드/캘린더/알림함과 마찬가지로 여기서도 보이면 안 된다.
+  // (지금까지 이 화면만 빠져 있었다 — 차단해도 그 사람 댓글은 계속 보였다.)
+  const visibleComments = useMemo(() => {
+    const blockedIds = profile?.blockedUserIds ?? [];
+    if (blockedIds.length === 0) return comments;
+    return comments.filter((c) => !blockedIds.includes(c.userId));
+  }, [comments, profile?.blockedUserIds]);
+
   // 댓글 목록을 "최상위 댓글 → 그 밑에 딸린 답글" 순서로 다시 배열한다.
   // 답글은 한 단계뿐이고, 커서 페이지네이션 경계에 걸려 부모를 아직 못 불러온 답글은
   // 최상위처럼 보여준다(드문 경우라 단순하게 처리).
   const orderedComments = useMemo(() => {
-    const topLevelIds = new Set(comments.filter((c) => !c.parentCommentId).map((c) => c.id));
+    const topLevelIds = new Set(visibleComments.filter((c) => !c.parentCommentId).map((c) => c.id));
     const repliesByParent = new Map<string, Comment[]>();
-    comments.forEach((c) => {
+    visibleComments.forEach((c) => {
       if (c.parentCommentId) {
         const list = repliesByParent.get(c.parentCommentId) ?? [];
         list.push(c);
@@ -121,19 +129,19 @@ export default function PostDetailScreen() {
       }
     });
     const ordered: { comment: Comment; isReply: boolean }[] = [];
-    comments
+    visibleComments
       .filter((c) => !c.parentCommentId)
       .forEach((c) => {
         ordered.push({ comment: c, isReply: false });
         (repliesByParent.get(c.id) ?? []).forEach((r) => ordered.push({ comment: r, isReply: true }));
       });
-    comments.forEach((c) => {
+    visibleComments.forEach((c) => {
       if (c.parentCommentId && !topLevelIds.has(c.parentCommentId)) {
         ordered.push({ comment: c, isReply: false });
       }
     });
     return ordered;
-  }, [comments]);
+  }, [visibleComments]);
 
   useFocusEffect(
     useCallback(() => {
@@ -349,7 +357,7 @@ export default function PostDetailScreen() {
               </View>
             </View>
             <View style={styles.commentsHeaderRow}>
-              <Text style={styles.commentsTitle}>댓글 {comments.length}</Text>
+              <Text style={styles.commentsTitle}>댓글 {visibleComments.length}</Text>
               <View style={styles.sortRow}>
                 <TouchableOpacity onPress={() => changeCommentSort('oldest')}>
                   <Text style={[styles.sortText, commentSort === 'oldest' && styles.sortTextActive]}>오래된순</Text>
