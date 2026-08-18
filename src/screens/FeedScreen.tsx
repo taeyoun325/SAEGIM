@@ -7,6 +7,7 @@ import { colors, spacing, radius } from '../constants/theme';
 import { DailyPrompt, Post } from '../types/models';
 import { getTodayPrompt } from '../services/promptService';
 import { getPromptFeed, FeedSort } from '../services/postService';
+import { getLikedPostIds } from '../services/likeService';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
@@ -18,10 +19,12 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function FeedScreen() {
   const navigation = useNavigation<Nav>();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const blockedIds = profile?.blockedUserIds ?? [];
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  // 카드마다 좋아요 여부를 따로 묻지 않도록 한 쪽 분량을 한 번에 조회해 들고 있는다.
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [sort, setSort] = useState<FeedSort>('latest');
   const [loading, setLoading] = useState(true);
@@ -38,13 +41,16 @@ export default function FeedScreen() {
         const page = await getPromptFeed(p.id, null, currentSort);
         setPosts(page.posts);
         setLastDoc(page.lastDoc);
+        if (user) {
+          setLikedPostIds(await getLikedPostIds(page.posts.map((post) => post.id), user.uid));
+        }
       }
     } catch (e) {
       setError('피드를 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +85,11 @@ export default function FeedScreen() {
       const page = await getPromptFeed(prompt.id, lastDoc, sort);
       setPosts((prev) => [...prev, ...page.posts]);
       setLastDoc(page.lastDoc);
+      if (user) {
+        // 새로 불러온 쪽만 조회해 기존 결과에 더한다.
+        const nextLiked = await getLikedPostIds(page.posts.map((post) => post.id), user.uid);
+        setLikedPostIds((prev) => new Set([...prev, ...nextLiked]));
+      }
     } finally {
       setLoadingMore(false);
     }
@@ -143,6 +154,7 @@ export default function FeedScreen() {
         renderItem={({ item }) => (
           <PostCard
             post={item}
+            liked={likedPostIds.has(item.id)}
             onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
             onPressAuthor={() => navigation.navigate('OtherProfile', { userId: item.userId })}
           />

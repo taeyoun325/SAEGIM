@@ -1,4 +1,4 @@
-import { doc, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, documentId, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { bumpDailyStats } from './statsService';
 import { createNotification } from './inboxService';
@@ -44,4 +44,26 @@ export async function hasLiked(postId: string, userId: string): Promise<boolean>
   const likeRef = doc(db, likesCol, likeDocId(postId, userId));
   const snap = await getDoc(likeRef);
   return snap.exists();
+}
+
+// 목록 화면에서 카드마다 hasLiked를 따로 부르면 글 개수만큼 조회가 나간다.
+// 좋아요 문서 id가 `${postId}_${uid}`로 정해져 있으므로 id 목록으로 한 번에 가져온다.
+// documentId() in 조회는 한 번에 30개까지라 그 단위로 끊는다(피드 한 쪽은 10개).
+const ID_QUERY_CHUNK = 30;
+
+export async function getLikedPostIds(postIds: string[], userId: string): Promise<Set<string>> {
+  const liked = new Set<string>();
+  if (postIds.length === 0) return liked;
+
+  const ids = postIds.map((postId) => likeDocId(postId, userId));
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_QUERY_CHUNK) chunks.push(ids.slice(i, i + ID_QUERY_CHUNK));
+
+  const snaps = await Promise.all(
+    chunks.map((chunk) => getDocs(query(collection(db, likesCol), where(documentId(), 'in', chunk))))
+  );
+  for (const snap of snaps) {
+    snap.docs.forEach((d) => liked.add(d.data().postId as string));
+  }
+  return liked;
 }

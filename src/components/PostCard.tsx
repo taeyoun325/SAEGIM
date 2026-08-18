@@ -14,15 +14,18 @@ interface Props {
   onPress: () => void;
   onPressAuthor?: () => void;
   onPressComment?: () => void;
+  // 목록 화면이 좋아요 여부를 미리 한 번에 조회해 넘겨주면 카드가 따로 조회하지 않는다.
+  // 넘기지 않으면 카드가 알아서 조회하므로 기존 화면들은 그대로 동작한다.
+  liked?: boolean;
 }
 
 const DOUBLE_TAP_MS = 300;
 
-export default function PostCard({ post, onPress, onPressAuthor, onPressComment }: Props) {
+export default function PostCard({ post, onPress, onPressAuthor, onPressComment, liked: likedProp }: Props) {
   const { user } = useAuth();
   const { share } = useShare();
   const [nickname, setNickname] = useState<string>('...');
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(likedProp ?? false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const lastTapRef = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,9 +36,13 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment 
   }, [post.userId]);
 
   useEffect(() => {
+    if (likedProp !== undefined) {
+      setLiked(likedProp);
+      return;
+    }
     if (!user) return;
     hasLiked(post.id, user.uid).then(setLiked);
-  }, [post.id, user]);
+  }, [post.id, user, likedProp]);
 
   function handleShare() {
     share({ lines: post.lines, createdAt: post.createdAt, filename: `saegim-${post.id}` });
