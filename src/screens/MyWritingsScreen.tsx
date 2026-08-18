@@ -7,7 +7,16 @@ import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { Writing } from '../types/models';
-import { getMyWritings, updateWritingContent, validateLines } from '../services/writingService';
+import {
+  getMyWritings,
+  updateWritingContent,
+  validateLines,
+  softDeleteWriting,
+  restoreWriting,
+  getTrashedWritings,
+  purgeExpiredTrash,
+  TRASH_GRACE_DAYS,
+} from '../services/writingService';
 import { deleteWritingCompletely, updatePostContent } from '../services/postService';
 import { syncUserCounts } from '../services/userService';
 import { exportWritings } from '../services/exportService';
@@ -24,6 +33,9 @@ export default function MyWritingsScreen() {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [trashVisible, setTrashVisible] = useState(false);
+  const [trashed, setTrashed] = useState<Writing[]>([]);
+  const [trashLoading, setTrashLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -118,9 +130,12 @@ export default function MyWritingsScreen() {
 
   async function handleDelete() {
     if (!selected || !user) return;
+    const isPrivate = selected.visibility !== 'public';
     const ok = await confirm({
       title: '이 글을 삭제할까요?',
-      message: selected.visibility === 'public' ? '공개된 글이라면 다른 사람의 피드에서도 사라져요.' : undefined,
+      message: isPrivate
+        ? `${TRASH_GRACE_DAYS}일 안에는 휴지통에서 복구할 수 있어요.`
+        : '공개된 글이라면 다른 사람의 피드에서도 사라져요. 이 작업은 되돌릴 수 없어요.',
       confirmLabel: '삭제하기',
       destructive: true,
     });
@@ -128,8 +143,13 @@ export default function MyWritingsScreen() {
 
     setBusy(true);
     try {
-      // 공개된 글이면 게시물과 딸린 콘텐츠까지 함께 지운다.
-      await deleteWritingCompletely(selected.id, selected.postId ?? null);
+      if (isPrivate) {
+        // 비공개 글은 바로 지우지 않고 휴지통으로 보낸다(실수로 지운 일기를 되찾을 수 있게).
+        await softDeleteWriting(selected.id);
+      } else {
+        // 공개된 글은 게시물과 딸린 콘텐츠까지 함께 즉시 지운다.
+        await deleteWritingCompletely(selected.id, selected.postId ?? null);
+      }
       setWritings((prev) => prev.filter((w) => w.id !== selected.id));
       // 개수를 직접 -1 하지 않고 실제 문서 수로 다시 맞춘다(어긋남이 누적되지 않게).
       if (profile) await syncUserCounts(user.uid, profile);
@@ -140,6 +160,38 @@ export default function MyWritingsScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function openTrash() {
+    if (!user) return;
+    setTrashVisible(true);
+    setTrashLoading(true);
+    try {
+      await purgeExpiredTrash(user.uid);
+      setTrashed(await getTrashedWritings(user.uid));
+    } finally {
+      setTrashLoading(false);
+    }
+  }
+
+  async function handleRestore(writing: Writing) {
+    if (!user) return;
+    setBusy(true);
+    try {
+      await restoreWriting(writing.id);
+      setTrashed((prev) => prev.filter((w) => w.id !== writing.id));
+      await load();
+    } catch (e) {
+      await notify('오류', '복구에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function daysLeft(writing: Writing): number {
+    const deletedAt = writing.deletedAt ?? Date.now();
+    const elapsedDays = (Date.now() - deletedAt) / (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.ceil(TRASH_GRACE_DAYS - elapsedDays));
   }
 
   if (loading) {
@@ -160,9 +212,14 @@ export default function MyWritingsScreen() {
           <View>
             <View style={styles.titleRow}>
               <Text style={styles.title}>내 새김 관리</Text>
-              <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
-                <Text style={styles.exportButtonText}>📤 내보내기</Text>
-              </TouchableOpacity>
+              <View style={styles.titleButtons}>
+                <TouchableOpacity onPress={openTrash} style={styles.exportButton}>
+                  <Text style={styles.exportButtonText}>🗑 휴지통</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
+                  <Text style={styles.exportButtonText}>📤 내보내기</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             {stats && (
               <View style={styles.statsCard}>
@@ -254,6 +311,41 @@ export default function MyWritingsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={trashVisible} transparent animationType="slide" onRequestClose={() => setTrashVisible(false)}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetDate}>🗑 휴지통</Text>
+            <Text style={styles.trashHint}>
+              비공개 글을 지우면 여기 {TRASH_GRACE_DAYS}일 동안 보관돼요. 기한이 지나면 완전히 사라져요.
+            </Text>
+            {trashLoading ? (
+              <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
+            ) : (
+              <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }}>
+                {trashed.length === 0 ? (
+                  <Text style={styles.emptyText}>휴지통이 비어있어요.</Text>
+                ) : (
+                  trashed.map((w) => (
+                    <View key={w.id} style={styles.trashRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.rowPreview} numberOfLines={1}>{w.lines.join(' · ')}</Text>
+                        <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(w.createdAt))} · {daysLeft(w)}일 후 완전 삭제</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => handleRestore(w)} disabled={busy}>
+                        <Text style={styles.restoreText}>복구</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            )}
+            <TouchableOpacity style={styles.closeButton} onPress={() => setTrashVisible(false)}>
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -263,6 +355,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   list: { padding: spacing.lg, paddingBottom: spacing.xl },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  titleButtons: { flexDirection: 'row', gap: spacing.sm },
   title: { fontSize: 22, fontWeight: '800', color: colors.primary },
   exportButton: {
     borderRadius: radius.full,
@@ -325,4 +418,14 @@ const styles = StyleSheet.create({
   buttonDanger: { backgroundColor: colors.danger },
   closeButton: { marginTop: spacing.lg, alignItems: 'center', paddingVertical: spacing.md },
   closeButtonText: { color: colors.textSoft, fontWeight: '600' },
+  trashHint: { color: colors.textSoft, fontSize: 12, lineHeight: 17, marginBottom: spacing.md },
+  trashRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  restoreText: { color: colors.primary, fontWeight: '700' },
 });

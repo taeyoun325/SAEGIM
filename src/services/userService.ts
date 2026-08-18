@@ -7,6 +7,7 @@ import {
   arrayRemove,
   collection,
   getCountFromServer,
+  getDocs,
   query,
   where,
 } from 'firebase/firestore';
@@ -158,14 +159,15 @@ export async function recordTodayWriting(uid: string, todayDateStr: string): Pro
 // 프로필에 저장된 개수를 실제 문서 개수와 다시 맞춘다.
 // 개수는 비정규화된 값이라 중간에 실패한 삭제·과거 버그 때문에 실제와 어긋날 수 있고,
 // 사용자에게는 "내가 쓴 글 수"가 정확한 게 가장 중요하다(지우면 줄어야 한다).
-// getCountFromServer는 문서를 전부 읽지 않고 집계만 가져오므로 호출당 비용이 작다.
+// writings는 휴지통(deletedAt) 문서를 빼야 해서 문서를 직접 세고,
+// posts는 그런 상태가 없어 집계 쿼리(getCountFromServer)로 가볍게 처리한다.
 // 값이 이미 맞으면 쓰기를 하지 않아 불필요한 요금이 발생하지 않는다.
 export async function syncUserCounts(uid: string, profile: UserProfile): Promise<UserProfile> {
-  const [writingsSnap, postsSnap] = await Promise.all([
-    getCountFromServer(query(collection(db, 'writings'), where('userId', '==', uid))),
+  const [writingsDocs, postsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'writings'), where('userId', '==', uid))),
     getCountFromServer(query(collection(db, 'posts'), where('userId', '==', uid))),
   ]);
-  const writingCount = writingsSnap.data().count;
+  const writingCount = writingsDocs.docs.filter((d) => !d.data().deletedAt).length;
   const publicPostCount = postsSnap.data().count;
   if (profile.writingCount === writingCount && profile.publicPostCount === publicPostCount) {
     return profile;

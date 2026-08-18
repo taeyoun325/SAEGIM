@@ -63,6 +63,12 @@ export default function TodayScreen() {
           if (draft) {
             setText(draft.join('\n'));
             setDraftRestored(true);
+          } else {
+            // 화면을 나가지 않은 채로 오늘 글이 지워지면(휴지통) writing이 null이 되는데,
+            // 여기서 text를 비워주지 않으면 화면에 남아있던 지난 내용이 다음 입력의
+            // 시작값처럼 보인다 — 실제로는 저장된 적 없는 글인데도 계속 남아있던 것.
+            setText('');
+            setDraftRestored(false);
           }
         }
       }

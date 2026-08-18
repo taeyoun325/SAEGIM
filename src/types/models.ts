@@ -18,6 +18,7 @@ export interface Writing {
   visibility: Visibility;
   postId?: string | null;
   category?: string; // 글감 카테고리(개인 통계용 비정규화)
+  deletedAt?: number | null; // 비공개 글을 지우면 바로 없애지 않고 휴지통 기간(30일) 동안 이 값만 채운다
 }
 
 export interface Post {
