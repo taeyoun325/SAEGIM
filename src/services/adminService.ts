@@ -198,17 +198,27 @@ async function resolveReportPostId(report: Report): Promise<string | null> {
 // 신고된 콘텐츠를 삭제하고 신고를 처리 완료로 표시한다.
 // 신고자에게는 "처리됐다"는 결과를 알려준다 — 신고하고 나서 아무 반응이 없으면
 // 신고 기능 자체를 신뢰하지 않게 된다(신뢰·안전 UX의 기본 원칙).
+// 글쓴이 본인에게도 알려야 한다 — 지금까지는 자기 글/댓글이 아무 설명 없이
+// 사라졌었다("이유도 모른 채 지워졌다"는 게 신뢰·안전 프로세스에서 흔히
+// 지적되는 불투명성 문제다). 삭제 전에 작성자 uid를 미리 읽어둔다(지운 뒤엔
+// 문서가 없어 알 수 없다).
 export async function deleteReportedContent(report: Report, adminUid: string): Promise<void> {
   const postId = await resolveReportPostId(report);
+  let authorId: string | null = null;
   try {
     if (report.targetType === 'post') {
       const post = await getPostById(report.targetId);
+      authorId = post?.userId ?? null;
       // deletePost는 댓글/좋아요/저장까지 함께 지우고 원본 글을 비공개로 되돌린다.
       if (post) await deletePost(post.id, post.writingId);
     } else {
       const snap = await getDoc(doc(db, 'comments', report.targetId));
-      // deleteComment는 게시물의 commentCount도 함께 맞춘다.
-      if (snap.exists()) await deleteComment(report.targetId, (snap.data() as Comment).postId);
+      if (snap.exists()) {
+        const comment = snap.data() as Comment;
+        authorId = comment.userId;
+        // deleteComment는 게시물의 commentCount도 함께 맞춘다.
+        await deleteComment(report.targetId, comment.postId);
+      }
     }
   } catch {
     // 이미 삭제된 콘텐츠일 수 있다. 신고 처리는 계속 진행한다.
@@ -218,6 +228,9 @@ export async function deleteReportedContent(report: Report, adminUid: string): P
   // — AppNotification.postId는 필수 필드라 빈 값을 넣을 수 없다.
   if (postId) {
     createNotification(report.reporterId, adminUid, 'report_resolved', postId).catch(() => {});
+    if (authorId) {
+      createNotification(authorId, adminUid, 'content_removed', postId).catch(() => {});
+    }
   }
 }
 

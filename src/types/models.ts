@@ -99,7 +99,8 @@ export type NotificationType =
   | 'comment_like'
   | 'comment_reply'
   | 'report_resolved' // 내가 신고한 콘텐츠가 검토돼 삭제됐다
-  | 'report_dismissed'; // 내가 신고한 콘텐츠를 검토했지만 문제없다고 판단했다
+  | 'report_dismissed' // 내가 신고한 콘텐츠를 검토했지만 문제없다고 판단했다
+  | 'content_removed'; // 내가 올린 콘텐츠가 신고 처리로 삭제됐다(글쓴이 본인에게 가는 알림)
 
 // 인앱 알림함(활동 알림). OS 푸시가 아니라 앱을 열었을 때 종 아이콘으로 확인하는 방식.
 // (Cloud Functions/FCM 서버가 없어 실시간 푸시는 불가능 — Firestore 문서 읽기로만 구현한다.)

@@ -26,6 +26,7 @@ const MESSAGE: Record<AppNotification['type'], string> = {
   comment_reply: '님이 내 댓글에 답글을 남겼어요',
   report_resolved: '신고하신 콘텐츠를 검토해 삭제했어요',
   report_dismissed: '신고하신 콘텐츠를 검토했지만 문제가 없다고 판단했어요',
+  content_removed: '올리신 글/댓글이 신고 검토 후 커뮤니티 정책 위반으로 삭제됐어요',
 };
 
 const ICON: Record<AppNotification['type'], string> = {
@@ -35,10 +36,12 @@ const ICON: Record<AppNotification['type'], string> = {
   comment_reply: '↩️',
   report_resolved: '🛡️',
   report_dismissed: '🛡️',
+  content_removed: '🚫',
 };
 
-// report_resolved는 콘텐츠가 이미 삭제된 뒤라 게시물로 이동해봤자 볼 게 없다.
-const REPORT_TYPES = new Set<AppNotification['type']>(['report_resolved', 'report_dismissed']);
+// report_resolved/content_removed는 콘텐츠가 이미 삭제된 뒤라 게시물로 이동해봤자 볼 게 없다.
+const REPORT_TYPES = new Set<AppNotification['type']>(['report_resolved', 'report_dismissed', 'content_removed']);
+const NON_NAVIGABLE_TYPES = new Set<AppNotification['type']>(['report_resolved', 'content_removed']);
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<Nav>();
@@ -104,11 +107,11 @@ export default function NotificationsScreen() {
         return (
           <TouchableOpacity
             style={[styles.row, !item.read && styles.rowUnread]}
-            disabled={item.type === 'report_resolved'}
+            disabled={NON_NAVIGABLE_TYPES.has(item.type)}
             onPress={() => {
               // report_dismissed는 콘텐츠가 그대로 남아 있어 이동이 의미 있지만,
-              // report_resolved는 이미 삭제된 뒤라 이동할 곳이 없다(disabled 처리).
-              if (item.type === 'report_resolved') return;
+              // report_resolved/content_removed는 이미 삭제된 뒤라 이동할 곳이 없다(disabled 처리).
+              if (NON_NAVIGABLE_TYPES.has(item.type)) return;
               navigation.navigate('PostDetail', { postId: item.postId });
             }}
           >
