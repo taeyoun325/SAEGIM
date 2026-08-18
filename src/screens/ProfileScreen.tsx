@@ -9,6 +9,7 @@ import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
+import { getMyWritings } from '../services/writingService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
@@ -17,9 +18,10 @@ import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
 import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
-import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { formatDisplayDate, timestampToDateString, promptIdToDateString } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,13 +34,15 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
+  const [writtenDates, setWrittenDates] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const list = await getUserPublicPosts(user.uid);
+      const [list, writings] = await Promise.all([getUserPublicPosts(user.uid), getMyWritings(user.uid)]);
       setPosts(list);
+      setWrittenDates(new Set(writings.map((w) => promptIdToDateString(w.promptId))));
 
       if (profile) {
         // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
@@ -174,6 +178,10 @@ export default function ProfileScreen() {
               🧊 연속 기록 보호권 {profile.streakFreezes ?? 0}개 — 하루를 걸러도 스트릭이 안 끊겨요. 스트릭 배지를 딸 때마다 하나씩 생겨요.
             </Text>
 
+            <View style={styles.heatmapSection}>
+              <ActivityHeatmap writtenDates={writtenDates} />
+            </View>
+
             <View style={styles.linkRow}>
               <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('MyWritings')}>
                 <Text style={styles.linkButtonText}>📖 내 새김 관리</Text>
@@ -256,6 +264,7 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.textSoft, fontSize: 12, marginTop: spacing.xs },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: spacing.sm, marginBottom: spacing.sm },
   freezeNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.md },
+  heatmapSection: { marginBottom: spacing.lg },
   linkRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   linkButton: {
     flex: 1,

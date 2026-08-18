@@ -18,6 +18,10 @@ export function dateStringToPromptId(dateStr: string): string {
   return dateStr.replace(/-/g, '');
 }
 
+export function promptIdToDateString(promptId: string): string {
+  return `${promptId.slice(0, 4)}-${promptId.slice(4, 6)}-${promptId.slice(6, 8)}`;
+}
+
 export function isConsecutiveDay(prevDateStr: string, currentDateStr: string): boolean {
   const prev = new Date(prevDateStr);
   const current = new Date(currentDateStr);
