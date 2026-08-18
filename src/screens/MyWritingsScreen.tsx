@@ -10,6 +10,7 @@ import { Writing } from '../types/models';
 import { getMyWritings, updateWritingContent, validateLines } from '../services/writingService';
 import { deleteWritingCompletely, updatePostContent } from '../services/postService';
 import { syncUserCounts } from '../services/userService';
+import { exportWritings } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
@@ -103,6 +104,18 @@ export default function MyWritingsScreen() {
     }
   }
 
+  async function handleExport() {
+    if (writings.length === 0) {
+      await notify('내보낼 글이 없어요', '아직 새긴 생각이 없어요.');
+      return;
+    }
+    try {
+      await exportWritings(writings);
+    } catch (e) {
+      await notify('오류', '내보내기에 실패했어요.');
+    }
+  }
+
   async function handleDelete() {
     if (!selected || !user) return;
     const ok = await confirm({
@@ -145,7 +158,12 @@ export default function MyWritingsScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>내 새김 관리</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>내 새김 관리</Text>
+              <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
+                <Text style={styles.exportButtonText}>📤 내보내기</Text>
+              </TouchableOpacity>
+            </View>
             {stats && (
               <View style={styles.statsCard}>
                 <Text style={styles.statsHeadline}>지금까지 {stats.total}개의 생각을 남겼어요.</Text>
@@ -244,7 +262,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   list: { padding: spacing.lg, paddingBottom: spacing.xl },
-  title: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: spacing.md },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  title: { fontSize: 22, fontWeight: '800', color: colors.primary },
+  exportButton: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  exportButtonText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
   statsCard: { backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
   statsHeadline: { color: colors.primary, fontWeight: '700', fontSize: 15, marginBottom: spacing.xs },
   statsLine: { color: colors.text, fontSize: 13, marginTop: 2 },
