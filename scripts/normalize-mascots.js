@@ -108,9 +108,11 @@ async function process(name) {
 
   // 트림된 캐릭터를 400x400 캔버스에 꽉 차게(비율 유지) 리사이즈한다.
   // sharp는 composite보다 resize를 먼저 적용하므로 트림 결과를 직접 리사이즈해야 한다.
+  // 팔레트 PNG로 저장한다. 색 수가 적은 일러스트라 용량이 1/4로 줄고 눈에 띄는 차이는 없다
+  // (scripts/optimize-images.js가 같은 처리를 하며 실제 오차를 재서 확인한다).
   await sharp(trimmed)
     .resize(400, 400, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'mitchell' })
-    .png()
+    .png({ palette: true, quality: 100, effort: 10 })
     .toFile(path.join(assetsDir, name + '.png'));
 
   console.log(name, '->', tm.width + 'x' + tm.height, '-> 400x400 (flood-fill + edge color 확장)');
