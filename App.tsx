@@ -13,6 +13,13 @@ const AppShell = lazy(() => import('./src/AppShell'));
 // 폰트 하나 때문에 앱 전체가 빈 화면에 갇히는 것을 막는다(시스템 폰트로 대체됨).
 const FONT_TIMEOUT_MS = 4000;
 
+// 웹에서는 폰트를 아예 기다리지 않는다.
+// Jua는 2MB라, 처음 방문한 사람은 그동안 빈 화면만 보게 된다.
+// 웹의 fontFamily는 CSS라서 폰트가 없으면 시스템 한글 폰트로 자연스럽게 대체되고,
+// 폰트가 도착하면 그때 바뀐다 — 글자가 깨지거나 사라지지 않는다.
+// 네이티브는 폰트가 앱에 포함돼 바로 로드되므로 기존처럼 기다린다.
+const WAIT_FOR_FONTS = Platform.OS !== 'web';
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({ Jua_400Regular });
   const [fontTimedOut, setFontTimedOut] = useState(false);
@@ -39,7 +46,8 @@ export default function App() {
   const useNarrowFrame = Platform.OS === 'web' && !isWideWeb;
 
   // 폰트 로딩 실패나 지연은 치명적이지 않다. 앱은 반드시 뜬다.
-  const ready = themeReady && (fontsLoaded || !!fontError || fontTimedOut);
+  const fontSettled = fontsLoaded || !!fontError || fontTimedOut;
+  const ready = themeReady && (!WAIT_FOR_FONTS || fontSettled);
 
   // colors는 내용이 교체되는 객체라, 렌더 시점에 읽어야 선택된 테마가 반영된다.
   const frameStyle = [useNarrowFrame ? styles.phoneFrame : styles.fill, { backgroundColor: colors.background }];
