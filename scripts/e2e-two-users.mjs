@@ -306,6 +306,24 @@ async function main() {
     check('타인 프로필 수정 차단', true);
   }
 
+  // --- 탈퇴 시 남의 글 카운트까지 정리되는지 (게시물이 아직 살아있을 때 확인해야 한다) ---
+  // 문서만 지우면 "♥ 1인데 좋아요 0건"처럼 틀린 숫자가 영영 남는다.
+  // 앱의 accountService.deleteMyReactions와 같은 방식: 삭제와 카운트 감소를 같은 커밋으로.
+  {
+    for (const [col, field, id] of [['comments', 'commentCount', cRef.id], ['likes', 'likeCount', likeId]]) {
+      const batch = writeBatch(B.db);
+      batch.delete(doc(B.db, col, id));
+      batch.update(doc(B.db, 'posts', postRef.id), { [field]: increment(-1) });
+      await batch.commit();
+    }
+    const afterLeave = await getDoc(doc(B.db, 'posts', postRef.id));
+    check(
+      '탈퇴 시 상대 글 카운트 정리',
+      afterLeave.data().likeCount === 0 && afterLeave.data().commentCount === 0,
+      `likeCount=${afterLeave.data().likeCount}, commentCount=${afterLeave.data().commentCount}`
+    );
+  }
+
   // --- A가 게시물 삭제 → B 피드에서 사라짐 ---
   await deleteDoc(doc(A.db, 'posts', postRef.id));
   await updateDoc(doc(A.db, 'writings', wRef.id), { visibility: 'private', postId: null, updatedAt: Date.now() });
@@ -313,9 +331,7 @@ async function main() {
   check('A 삭제 후 B 피드에서 사라짐', !feedAfter.docs.some((d) => d.id === postRef.id));
 
   // --- 계정 삭제 시 콘텐츠가 실제로 사라지는지 검증 (앱의 deleteAllUserContent와 동일한 순서) ---
-  // B가 남긴 댓글/좋아요를 B 스스로 지울 수 있어야 한다.
-  await deleteDoc(doc(B.db, 'comments', cRef.id));
-  await deleteDoc(doc(B.db, 'likes', likeId));
+  // B의 댓글/좋아요는 바로 위 단계에서 카운트와 함께 정리됐다. 여기서는 남은 게 없는지 확인한다.
   const bComments = await getDocs(query(collection(B.db, 'comments'), where('userId', '==', ub.uid)));
   const bLikes = await getDocs(query(collection(B.db, 'likes'), where('userId', '==', ub.uid)));
   check('계정 삭제 시 본인 댓글/좋아요 제거', bComments.empty && bLikes.empty,
