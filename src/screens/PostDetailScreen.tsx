@@ -17,7 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post, Comment } from '../types/models';
 import { getPostById, deletePost } from '../services/postService';
-import { getComments, addComment, deleteComment, updateCommentContent } from '../services/commentService';
+import { getComments, addComment, deleteComment, updateCommentContent, CommentSort } from '../services/commentService';
 import { toggleLike, hasLiked } from '../services/likeService';
 import { toggleCommentLike, hasLikedComment } from '../services/commentLikeService';
 import { toggleSave, hasSaved } from '../services/saveService';
@@ -55,6 +55,7 @@ export default function PostDetailScreen() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [commentSort, setCommentSort] = useState<CommentSort>('oldest');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -66,7 +67,7 @@ export default function PostDetailScreen() {
         const author = await getDisplayProfile(p.userId);
         setAuthorNickname(author?.nickname ?? '알 수 없음');
         const [commentPage, likedResult, savedResult] = await Promise.all([
-          getComments(postId),
+          getComments(postId, null, commentSort),
           hasLiked(postId, user.uid),
           hasSaved(postId, user.uid),
         ]);
@@ -82,13 +83,13 @@ export default function PostDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [postId, user]);
+  }, [postId, user, commentSort]);
 
   async function loadMoreComments() {
     if (!post || !commentsLastDoc || loadingMoreComments || !user) return;
     setLoadingMoreComments(true);
     try {
-      const page = await getComments(post.id, commentsLastDoc);
+      const page = await getComments(post.id, commentsLastDoc, commentSort);
       setComments((prev) => [...prev, ...page.comments]);
       setCommentsLastDoc(page.lastDoc);
       const likedIds = await Promise.all(
@@ -98,6 +99,12 @@ export default function PostDetailScreen() {
     } finally {
       setLoadingMoreComments(false);
     }
+  }
+
+  function changeCommentSort(next: CommentSort) {
+    if (next === commentSort) return;
+    setCommentSort(next);
+    setLoading(true);
   }
 
   // 댓글 목록을 "최상위 댓글 → 그 밑에 딸린 답글" 순서로 다시 배열한다.
@@ -341,7 +348,18 @@ export default function PostDetailScreen() {
                 )}
               </View>
             </View>
-            <Text style={styles.commentsTitle}>댓글 {comments.length}</Text>
+            <View style={styles.commentsHeaderRow}>
+              <Text style={styles.commentsTitle}>댓글 {comments.length}</Text>
+              <View style={styles.sortRow}>
+                <TouchableOpacity onPress={() => changeCommentSort('oldest')}>
+                  <Text style={[styles.sortText, commentSort === 'oldest' && styles.sortTextActive]}>오래된순</Text>
+                </TouchableOpacity>
+                <Text style={styles.sortDivider}>·</Text>
+                <TouchableOpacity onPress={() => changeCommentSort('newest')}>
+                  <Text style={[styles.sortText, commentSort === 'newest' && styles.sortTextActive]}>최신순</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         }
         renderItem={({ item: { comment, isReply } }) => {
@@ -460,7 +478,18 @@ const styles = StyleSheet.create({
   likedText: { color: colors.danger, fontWeight: '700' },
   savedText: { color: colors.primary, fontWeight: '700' },
   reportText: { color: colors.textSoft, marginLeft: 'auto' },
-  commentsTitle: { marginTop: spacing.lg, marginBottom: spacing.sm, fontWeight: '700', color: colors.primary },
+  commentsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  commentsTitle: { fontWeight: '700', color: colors.primary },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  sortText: { color: colors.textSoft, fontSize: 12 },
+  sortTextActive: { color: colors.primary, fontWeight: '700' },
+  sortDivider: { color: colors.border, fontSize: 12 },
   commentRow: { flexDirection: 'row', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   commentRowReply: { marginLeft: spacing.xl, paddingLeft: spacing.sm, borderLeftWidth: 2, borderLeftColor: colors.border },
   commentAuthorRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

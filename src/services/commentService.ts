@@ -94,10 +94,20 @@ export interface CommentPage {
   lastDoc: DocumentSnapshot | null;
 }
 
-export async function getComments(postId: string, after?: DocumentSnapshot | null): Promise<CommentPage> {
+export type CommentSort = 'oldest' | 'newest';
+
+// 답글은 항상 원댓글 바로 아래 붙어야 하므로 정렬 기준과 무관하게 다루기 쉽도록
+// 최상위 댓글만 정렬 순서를 바꾼다 — 화면(PostDetailScreen)의 orderedComments가
+// parentCommentId로 답글을 묶어주는 로직과 맞물려 동작한다.
+export async function getComments(
+  postId: string,
+  after?: DocumentSnapshot | null,
+  sort: CommentSort = 'oldest'
+): Promise<CommentPage> {
+  const direction = sort === 'newest' ? 'desc' : 'asc';
   const q = after
-    ? query(collection(db, commentsCol), where('postId', '==', postId), orderBy('createdAt', 'asc'), startAfter(after), limit(COMMENT_PAGE_SIZE))
-    : query(collection(db, commentsCol), where('postId', '==', postId), orderBy('createdAt', 'asc'), limit(COMMENT_PAGE_SIZE));
+    ? query(collection(db, commentsCol), where('postId', '==', postId), orderBy('createdAt', direction), startAfter(after), limit(COMMENT_PAGE_SIZE))
+    : query(collection(db, commentsCol), where('postId', '==', postId), orderBy('createdAt', direction), limit(COMMENT_PAGE_SIZE));
   const snap = await getDocs(q);
   return {
     comments: snap.docs.map((d) => ({ id: d.id, ...d.data() } as Comment)),
