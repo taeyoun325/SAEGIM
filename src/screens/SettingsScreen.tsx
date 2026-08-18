@@ -16,8 +16,15 @@ import {
   ReminderTime,
 } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
-import { updateUserProfile, muteKeyword, unmuteKeyword } from '../services/userService';
+import {
+  updateUserProfile,
+  muteKeyword,
+  unmuteKeyword,
+  muteNotificationType,
+  unmuteNotificationType,
+} from '../services/userService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
+import { NotificationType } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
 
@@ -31,6 +38,15 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; emoji: string }[] 
 
 // 사람마다 하루를 정리하는 시간이 다르니 몇 가지 대표적인 시간대만 고를 수 있게 한다.
 // 분 단위 커스텀 입력은 이 정도 알림 기능치고 과한 선택지라 대표 시간대로 좁혔다.
+// 신고 처리 결과 알림(report_resolved/report_dismissed)은 운영 조치를 알리는
+// 필수 정보라 여기 포함하지 않는다 — 사용자가 끌 수 있는 건 활동 알림뿐이다.
+const NOTIFICATION_TYPE_OPTIONS: { value: NotificationType; label: string }[] = [
+  { value: 'post_like', label: '내 글에 좋아요' },
+  { value: 'post_comment', label: '내 글에 댓글' },
+  { value: 'comment_like', label: '내 댓글에 좋아요' },
+  { value: 'comment_reply', label: '내 댓글에 답글' },
+];
+
 const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] = [
   { hour: 9, minute: 0, label: '오전 9시' },
   { hour: 12, minute: 0, label: '낮 12시' },
@@ -88,6 +104,16 @@ export default function SettingsScreen() {
   async function handleRemoveMutedKeyword(keyword: string) {
     if (!user) return;
     await unmuteKeyword(user.uid, keyword);
+    await refreshProfile();
+  }
+
+  async function toggleNotificationType(type: NotificationType, currentlyOn: boolean) {
+    if (!user) return;
+    if (currentlyOn) {
+      await muteNotificationType(user.uid, type);
+    } else {
+      await unmuteNotificationType(user.uid, type);
+    }
     await refreshProfile();
   }
 
@@ -190,6 +216,22 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>알림 종류</Text>
+          <Text style={styles.categoryHint}>끄고 싶은 활동 알림만 골라서 끌 수 있어요.</Text>
+          {NOTIFICATION_TYPE_OPTIONS.map((opt) => {
+            const on = !profile?.mutedNotificationTypes?.includes(opt.value);
+            return (
+              <View key={opt.value} style={styles.notifTypeRow}>
+                <Text style={styles.rowButtonText}>{opt.label}</Text>
+                <Switch value={on} onValueChange={() => toggleNotificationType(opt.value, on)} />
+              </View>
+            );
+          })}
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -310,6 +352,12 @@ const styles = StyleSheet.create({
   adminText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   dangerText: { color: colors.danger, fontSize: 15 },
   categorySection: { paddingVertical: spacing.md },
+  notifTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
   categoryHint: { color: colors.textSoft, fontSize: 12, marginTop: 2, marginBottom: spacing.sm },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   categoryChip: {

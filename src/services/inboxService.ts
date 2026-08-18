@@ -35,6 +35,9 @@ export async function createNotification(
   if (recipientId === actorId) return;
   const recipient = await getDisplayProfile(recipientId);
   if (recipient?.blockedUserIds?.includes(actorId)) return;
+  // 신고 처리 결과(report_resolved/report_dismissed)는 설정 화면에서 끌 수 있는
+  // 목록에 없으므로 이 배열엔 그 종류가 절대 들어있지 않다 — 운영 알림은 항상 온다.
+  if (recipient?.mutedNotificationTypes?.includes(type)) return;
   const ref = doc(collection(db, notificationsCol));
   const data: Omit<AppNotification, 'id'> = {
     recipientId,

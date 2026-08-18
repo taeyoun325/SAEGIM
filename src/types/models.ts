@@ -74,6 +74,7 @@ export interface UserProfile {
   preferredCategories?: string[];
   streakFreezes?: number; // 하루 빠져도 연속 기록을 지켜주는 보호권
   mutedKeywords?: string[]; // 이 단어가 들어간 글을 피드/캘린더에서 보이지 않게 한다
+  mutedNotificationTypes?: NotificationType[]; // 이 종류의 알림은 아예 만들지 않는다(알림 피로 방지)
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

@@ -11,7 +11,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { UserProfile } from '../types/models';
+import { UserProfile, NotificationType } from '../types/models';
 import { bumpDailyStats } from './statsService';
 
 const usersCol = 'users';
@@ -101,6 +101,16 @@ export async function muteKeyword(uid: string, keyword: string): Promise<void> {
 
 export async function unmuteKeyword(uid: string, keyword: string): Promise<void> {
   await updateDoc(doc(db, usersCol, uid), { mutedKeywords: arrayRemove(keyword) });
+}
+
+// 알림 종류별로 끌 수 있게 한다. 신고 처리 결과 알림은 여기 포함하지 않는다
+// (운영 조치를 알리는 것이라 피로도 문제가 아니라 반드시 전달돼야 하는 정보다).
+export async function muteNotificationType(uid: string, type: NotificationType): Promise<void> {
+  await updateDoc(doc(db, usersCol, uid), { mutedNotificationTypes: arrayUnion(type) });
+}
+
+export async function unmuteNotificationType(uid: string, type: NotificationType): Promise<void> {
+  await updateDoc(doc(db, usersCol, uid), { mutedNotificationTypes: arrayRemove(type) });
 }
 
 export interface RecordWritingResult {
