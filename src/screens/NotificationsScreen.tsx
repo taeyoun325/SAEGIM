@@ -42,7 +42,7 @@ const REPORT_TYPES = new Set<AppNotification['type']>(['report_resolved', 'repor
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, refreshUnreadNotifications } = useAuth();
+  const { user, profile, refreshUnreadNotifications } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,10 +51,14 @@ export default function NotificationsScreen() {
     setLoading(true);
     try {
       const list = await getNotifications(user.uid);
+      // 차단은 새 알림이 안 오게 막는 것과는 별개로, 차단하기 전에 이미 와 있던 알림도
+      // 지금부터는 안 보이는 게 맞다(피드/캘린더에서 그 사람 글을 숨기는 것과 같은 원칙).
+      const blockedIds = profile?.blockedUserIds ?? [];
+      const visible = list.filter((n) => !blockedIds.includes(n.actorId));
       // getDisplayProfile이 같은 사람에 대한 동시 요청을 하나로 합쳐주므로
       // 같은 사람이 여러 번 알림을 보냈어도 조회는 한 번만 나간다.
       const withNicknames: Row[] = await Promise.all(
-        list.map(async (n) => {
+        visible.map(async (n) => {
           const actor = await getDisplayProfile(n.actorId);
           return { ...n, actorNickname: actor?.nickname ?? '알 수 없음' };
         })
