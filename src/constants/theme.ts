@@ -90,3 +90,16 @@ export const radius = {
 export const fonts = {
   regular: 'Jua_400Regular',
 };
+
+// 글자 크기: 시스템 폰트 확대(OS 설정)와는 별개로 앱 안에서 직접 고를 수 있게 한다.
+// WCAG 1.4.4(텍스트 200%까지 확대돼도 정보 손실이 없어야 한다)를 참고했지만,
+// 여기서는 "고르면 바로 반영"되는 편의 기능으로 세 단계만 둔다.
+export type FontScalePreference = 'small' | 'medium' | 'large';
+
+export const FONT_SCALE_STORAGE_KEY = 'saegim:fontScale';
+
+export const FONT_SCALE_VALUES: Record<FontScalePreference, number> = {
+  small: 0.9,
+  medium: 1,
+  large: 1.2,
+};

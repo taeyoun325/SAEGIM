@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Switch, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Switch, Platform, ScrollView, Text as RNText } from 'react-native';
 import Text from '../components/Text';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { colors, spacing, radius, ThemePreference } from '../constants/theme';
+import { colors, spacing, radius, fonts, ThemePreference, FontScalePreference, FONT_SCALE_VALUES } from '../constants/theme';
 import { loadThemePreference, saveThemePreference, canReloadForTheme, reloadForTheme } from '../services/themeService';
+import { useFontScale } from '../context/FontScaleContext';
 import {
   isReminderEnabled,
   enableDailyReminder,
@@ -36,6 +37,12 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; emoji: string }[] 
   { value: 'dark', label: '다크', emoji: '🌙' },
 ];
 
+const FONT_SCALE_OPTIONS: { value: FontScalePreference; label: string }[] = [
+  { value: 'small', label: '작게' },
+  { value: 'medium', label: '보통' },
+  { value: 'large', label: '크게' },
+];
+
 // 사람마다 하루를 정리하는 시간이 다르니 몇 가지 대표적인 시간대만 고를 수 있게 한다.
 // 분 단위 커스텀 입력은 이 정도 알림 기능치고 과한 선택지라 대표 시간대로 좁혔다.
 // 신고 처리 결과 알림(report_resolved/report_dismissed)은 운영 조치를 알리는
@@ -63,6 +70,7 @@ export default function SettingsScreen() {
   const [reminderTime, setReminderTimeState] = useState<ReminderTime>({ hour: 20, minute: 0 });
   const [admin, setAdmin] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>('system');
+  const { preference: fontScalePreference, setPreference: setFontScalePreference } = useFontScale();
 
   useEffect(() => {
     loadThemePreference().then(setThemePreference);
@@ -260,6 +268,38 @@ export default function SettingsScreen() {
 
       <View style={styles.card}>
         <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>글자 크기</Text>
+          <Text style={styles.categoryHint}>고르면 바로 적용돼요.</Text>
+          <View style={styles.themeRow}>
+            {FONT_SCALE_OPTIONS.map((option) => {
+              const selected = fontScalePreference === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.themeChip, selected && styles.themeChipSelected]}
+                  onPress={() => setFontScalePreference(option.value)}
+                >
+                  {/* 미리보기 글자는 지금 선택된 배율의 영향을 받으면 안 되므로
+                      배율을 자동 적용하는 components/Text가 아니라 RN 원본 Text를 쓴다. */}
+                  <RNText
+                    style={[
+                      styles.fontScalePreviewText,
+                      { fontSize: 16 * FONT_SCALE_VALUES[option.value] },
+                      selected && styles.themeChipTextSelected,
+                    ]}
+                  >
+                    가
+                  </RNText>
+                  <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.categorySection}>
           <Text style={styles.rowButtonText}>선호 글감 카테고리</Text>
           <Text style={styles.categoryHint}>나중에 맞춤 글감 추천에 활용돼요.</Text>
           <View style={styles.categoryRow}>
@@ -382,6 +422,7 @@ const styles = StyleSheet.create({
   },
   themeChipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.primary },
   themeEmoji: { fontSize: 18 },
+  fontScalePreviewText: { fontFamily: fonts.regular, color: colors.textSoft },
   themeChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
   themeChipTextSelected: { color: colors.primary },
   categoryChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },

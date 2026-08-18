@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './context/AuthContext';
 import { DialogProvider } from './context/DialogContext';
 import { ShareProvider } from './context/ShareContext';
+import { FontScaleProvider } from './context/FontScaleContext';
 import RootNavigator from './navigation/RootNavigator';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
@@ -11,15 +12,17 @@ import InstallPrompt from './components/InstallPrompt';
 // 여기서부터 로드되는 StyleSheet들은 선택된 팔레트를 정확히 반영한다.
 export default function AppShell() {
   return (
-    <DialogProvider>
-      <ShareProvider>
-        <AuthProvider>
-          <OfflineBanner />
-          <InstallPrompt />
-          <RootNavigator />
-          <StatusBar style="auto" />
-        </AuthProvider>
-      </ShareProvider>
-    </DialogProvider>
+    <FontScaleProvider>
+      <DialogProvider>
+        <ShareProvider>
+          <AuthProvider>
+            <OfflineBanner />
+            <InstallPrompt />
+            <RootNavigator />
+            <StatusBar style="auto" />
+          </AuthProvider>
+        </ShareProvider>
+      </DialogProvider>
+    </FontScaleProvider>
   );
 }
