@@ -9,6 +9,7 @@ import {
   orderBy,
   query,
   startAfter,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -78,6 +79,14 @@ export async function addComment(
   }
 
   return commentRef.id;
+}
+
+// 댓글도 글처럼 오타나 생각이 바뀌었을 때 고칠 수 있어야 한다(지금까지는 삭제뿐이었다).
+// 좋아요·작성일·글 id·답글 대상은 보안 규칙(ownerEditingCommentContent)이 그대로 강제한다.
+export async function updateCommentContent(commentId: string, content: string): Promise<void> {
+  const { valid, reason } = validateComment(content);
+  if (!valid) throw new Error(reason);
+  await updateDoc(doc(db, commentsCol, commentId), { content: content.trim(), editedAt: Date.now() });
 }
 
 export interface CommentPage {

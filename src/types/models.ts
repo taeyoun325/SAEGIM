@@ -42,6 +42,7 @@ export interface Comment {
   createdAt: number;
   likeCount?: number;
   parentCommentId?: string | null; // 답글이면 원댓글 id, 최상위 댓글이면 null
+  editedAt?: number | null; // 본문을 수정한 적이 있으면 그 시각
 }
 
 export interface CommentLike {

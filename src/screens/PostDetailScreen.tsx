@@ -17,7 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post, Comment } from '../types/models';
 import { getPostById, deletePost } from '../services/postService';
-import { getComments, addComment, deleteComment } from '../services/commentService';
+import { getComments, addComment, deleteComment, updateCommentContent } from '../services/commentService';
 import { toggleLike, hasLiked } from '../services/likeService';
 import { toggleCommentLike, hasLikedComment } from '../services/commentLikeService';
 import { toggleSave, hasSaved } from '../services/saveService';
@@ -52,6 +52,9 @@ export default function PostDetailScreen() {
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorId: string; nickname: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -215,6 +218,42 @@ export default function PostDetailScreen() {
     }
   }
 
+  function startEditComment(comment: Comment) {
+    setEditingCommentId(comment.id);
+    setEditCommentText(comment.content);
+  }
+
+  function cancelEditComment() {
+    setEditingCommentId(null);
+    setEditCommentText('');
+  }
+
+  async function handleSaveEditComment(comment: Comment) {
+    if (!editCommentText.trim()) return;
+    if (containsSensitiveWord(editCommentText)) {
+      const ok = await confirm({
+        title: '잠깐, 다시 한번 확인해보세요',
+        message: '상대방이 상처받을 수 있는 표현이 있는 것 같아요. 그래도 남기시겠어요?',
+        confirmLabel: '그대로 남기기',
+        cancelLabel: '다시 쓰기',
+      });
+      if (!ok) return;
+    }
+    setSavingEdit(true);
+    try {
+      await updateCommentContent(comment.id, editCommentText);
+      const editedAt = Date.now();
+      setComments((prev) =>
+        prev.map((c) => (c.id === comment.id ? { ...c, content: editCommentText.trim(), editedAt } : c))
+      );
+      cancelEditComment();
+    } catch (e: any) {
+      await notify('오류', e?.message || '댓글 수정에 실패했어요.');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   async function handleDeleteComment(comment: Comment) {
     if (!post) return;
     const ok = await confirm({ title: '댓글을 삭제할까요?', confirmLabel: '삭제', destructive: true });
@@ -307,43 +346,76 @@ export default function PostDetailScreen() {
         }
         renderItem={({ item: { comment, isReply } }) => {
           const commentLiked = likedCommentIds.has(comment.id);
+          const isEditing = editingCommentId === comment.id;
           return (
             <View style={[styles.commentRow, isReply && styles.commentRowReply]}>
               <View style={{ flex: 1 }}>
                 <View style={styles.commentAuthorRow}>
                   <Text style={styles.commentAuthor}>{comment.authorNickname}</Text>
-                  <Text style={styles.commentTime}>{formatDisplayDate(timestampToDateString(comment.createdAt))}</Text>
+                  <Text style={styles.commentTime}>
+                    {formatDisplayDate(timestampToDateString(comment.createdAt))}
+                    {comment.editedAt ? ' (수정됨)' : ''}
+                  </Text>
                 </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
-                <View style={styles.commentActionsRow}>
-                  <TouchableOpacity
-                    onPress={() => handleToggleCommentLike(comment)}
-                    style={styles.commentActionButton}
-                    accessibilityRole="button"
-                    accessibilityLabel={`댓글 좋아요 ${comment.likeCount ?? 0}개`}
-                    aria-selected={commentLiked}
-                  >
-                    <Text style={commentLiked ? styles.commentLikedText : styles.commentActionText}>
-                      {commentLiked ? '♥' : '♡'} {comment.likeCount ?? 0}
-                    </Text>
-                  </TouchableOpacity>
-                  {!isReply && (
-                    <TouchableOpacity
-                      onPress={() => setReplyingTo({ commentId: comment.id, authorId: comment.userId, nickname: comment.authorNickname })}
-                    >
-                      <Text style={styles.commentActionText}>답글</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                {isEditing ? (
+                  <>
+                    <TextInput
+                      style={styles.commentEditInput}
+                      value={editCommentText}
+                      onChangeText={setEditCommentText}
+                      maxLength={COMMENT_MAX_LENGTH}
+                      multiline
+                    />
+                    <View style={styles.commentActionsRow}>
+                      <TouchableOpacity onPress={cancelEditComment} disabled={savingEdit}>
+                        <Text style={styles.commentActionText}>취소</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleSaveEditComment(comment)} disabled={savingEdit}>
+                        <Text style={styles.commentSaveText}>{savingEdit ? '저장 중...' : '저장'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.commentContent}>{comment.content}</Text>
+                    <View style={styles.commentActionsRow}>
+                      <TouchableOpacity
+                        onPress={() => handleToggleCommentLike(comment)}
+                        style={styles.commentActionButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`댓글 좋아요 ${comment.likeCount ?? 0}개`}
+                        aria-selected={commentLiked}
+                      >
+                        <Text style={commentLiked ? styles.commentLikedText : styles.commentActionText}>
+                          {commentLiked ? '♥' : '♡'} {comment.likeCount ?? 0}
+                        </Text>
+                      </TouchableOpacity>
+                      {!isReply && (
+                        <TouchableOpacity
+                          onPress={() => setReplyingTo({ commentId: comment.id, authorId: comment.userId, nickname: comment.authorNickname })}
+                        >
+                          <Text style={styles.commentActionText}>답글</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                )}
               </View>
-              {comment.userId === user?.uid ? (
-                <TouchableOpacity onPress={() => handleDeleteComment(comment)}>
-                  <Text style={styles.deleteText}>삭제</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => navigation.navigate('Report', { targetType: 'comment', targetId: comment.id })}>
-                  <Text style={styles.deleteText}>신고</Text>
-                </TouchableOpacity>
+              {!isEditing && (
+                comment.userId === user?.uid ? (
+                  <View style={styles.ownCommentActions}>
+                    <TouchableOpacity onPress={() => startEditComment(comment)}>
+                      <Text style={styles.deleteText}>수정</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteComment(comment)}>
+                      <Text style={styles.deleteText}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => navigation.navigate('Report', { targetType: 'comment', targetId: comment.id })}>
+                    <Text style={styles.deleteText}>신고</Text>
+                  </TouchableOpacity>
+                )
               )}
             </View>
           );
@@ -400,6 +472,19 @@ const styles = StyleSheet.create({
   commentActionText: { color: colors.textSoft, fontSize: 12 },
   commentLikedText: { color: colors.danger, fontSize: 12, fontWeight: '700' },
   deleteText: { color: colors.textSoft, fontSize: 12 },
+  ownCommentActions: { flexDirection: 'row', gap: spacing.sm },
+  commentEditInput: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    color: colors.text,
+    fontSize: 14,
+  },
+  commentSaveText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   replyBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',

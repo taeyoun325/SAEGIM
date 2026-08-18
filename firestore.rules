@@ -185,13 +185,27 @@ service cloud.firestore {
             || request.resource.data.likeCount - resource.data.likeCount == -1);
     }
 
+    // 작성자 본인이 댓글 본문만 고칠 때. 좋아요 수·작성자·작성일·글 id·답글 대상은
+    // 그대로여야 하고, 본문은 빈 문자열이 아니면서 클라이언트 검증과 같은 길이 제한을 지켜야 한다.
+    function ownerEditingCommentContent() {
+      return request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.likeCount == resource.data.likeCount
+        && request.resource.data.parentCommentId == resource.data.parentCommentId
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 200;
+    }
+
     match /comments/{commentId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && withinCooldown('comment', 15);
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && onlyCommentLikeCountChanged();
+      allow update: if isSignedIn() && (onlyCommentLikeCountChanged() || ownerEditingCommentContent());
     }
 
     // 댓글 좋아요: posts/likes와 동일한 패턴. doc id `${commentId}_${userId}`로 중복 방지.
