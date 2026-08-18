@@ -16,6 +16,7 @@ import { BADGE_DEFS } from '../constants/badges';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
+import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const { prompt, notify } = useDialog();
   const navigation = useNavigation<Nav>();
   const [posts, setPosts] = useState<Post[]>([]);
+  const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -203,7 +205,13 @@ export default function ProfileScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => <PostCard post={item} onPress={() => navigation.navigate('PostDetail', { postId: item.id })} />}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            liked={likedPostIds.has(item.id)}
+            onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+          />
+        )}
         ListFooterComponent={<BackgroundMascot source={require('../assets/mascot-profile.png')} />}
       />
     </View>

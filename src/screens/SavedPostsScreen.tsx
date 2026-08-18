@@ -8,6 +8,7 @@ import { Post } from '../types/models';
 import { getSavedPosts } from '../services/saveService';
 import PostCard from '../components/PostCard';
 import { useAuth } from '../context/AuthContext';
+import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -16,6 +17,7 @@ export default function SavedPostsScreen() {
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
+  const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -56,6 +58,7 @@ export default function SavedPostsScreen() {
       renderItem={({ item }) => (
         <PostCard
           post={item}
+          liked={likedPostIds.has(item.id)}
           onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
           onPressAuthor={() => navigation.navigate('OtherProfile', { userId: item.userId })}
         />

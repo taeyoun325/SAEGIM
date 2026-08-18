@@ -11,6 +11,7 @@ import { getPromptFeed } from '../services/postService';
 import { Writing, DailyPrompt, Post } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import PostCard from '../components/PostCard';
+import { useLikedPosts } from '../hooks/useLikedPosts';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
 
@@ -31,6 +32,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<DailyPrompt | null>(null);
   const [popularPosts, setPopularPosts] = useState<Post[]>([]);
+  const likedPostIds = useLikedPosts(popularPosts, user?.uid);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -214,6 +216,7 @@ export default function CalendarScreen() {
                       <PostCard
                         key={p.id}
                         post={p}
+                        liked={likedPostIds.has(p.id)}
                         onPress={() => {
                           closeModal();
                           navigation.navigate('PostDetail', { postId: p.id });

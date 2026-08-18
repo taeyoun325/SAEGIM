@@ -11,6 +11,7 @@ import { getUserProfile, blockUser } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import PostCard from '../components/PostCard';
+import { useLikedPosts } from '../hooks/useLikedPosts';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -22,6 +23,7 @@ export default function OtherProfileScreen() {
   const { confirm, notify } = useDialog();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -87,7 +89,13 @@ export default function OtherProfileScreen() {
           <Text style={styles.emptyText}>공개한 글이 없어요.</Text>
         </View>
       }
-      renderItem={({ item }) => <PostCard post={item} onPress={() => navigation.navigate('PostDetail', { postId: item.id })} />}
+      renderItem={({ item }) => (
+        <PostCard
+          post={item}
+          liked={likedPostIds.has(item.id)}
+          onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+        />
+      )}
     />
   );
 }
