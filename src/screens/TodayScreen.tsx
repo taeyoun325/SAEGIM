@@ -273,6 +273,11 @@ export default function TodayScreen() {
 
           <Text style={styles.guide}>이 글감을 보고 떠오른 생각을 새겨보세요.</Text>
           {draftRestored && <Text style={styles.draftBanner}>📝 작성 중이던 내용을 불러왔어요.</Text>}
+          {!hasWritten && profile && profile.streakCount > 0 && (profile.streakFreezes ?? 0) === 0 && (
+            <Text style={styles.streakRiskBanner}>
+              ⚠️ 오늘 새기지 않으면 🔥 {profile.streakCount}일 연속 기록이 끊겨요.
+            </Text>
+          )}
 
           <TextInput
             style={styles.writeInput}
@@ -355,6 +360,7 @@ const styles = StyleSheet.create({
   offscreen: { position: 'absolute', top: 0, left: -9999 },
   guide: { color: colors.textSoft, marginBottom: spacing.md },
   draftBanner: { color: colors.primary, fontSize: 12, marginBottom: spacing.sm },
+  streakRiskBanner: { color: colors.danger, fontSize: 12, fontWeight: '600', marginBottom: spacing.sm },
   writeInput: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,
