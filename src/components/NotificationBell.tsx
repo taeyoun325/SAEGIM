@@ -17,6 +17,8 @@ export default function NotificationBell() {
       style={styles.button}
       onPress={() => navigation.navigate('Notifications')}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={unreadNotifications > 0 ? `알림, 안 읽은 알림 ${unreadNotifications}개` : '알림'}
     >
       <Text style={styles.icon}>🔔</Text>
       {unreadNotifications > 0 && (

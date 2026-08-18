@@ -125,15 +125,31 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment,
         </View>
         <View style={styles.sideCol}>
           <Text style={styles.date}>{formatDisplayDate(timestampToDateString(post.createdAt))}</Text>
-          <TouchableOpacity style={styles.sideButton} onPress={handleToggleLike}>
+          <TouchableOpacity
+            style={styles.sideButton}
+            onPress={handleToggleLike}
+            accessibilityRole="button"
+            accessibilityLabel={`좋아요 ${likeCount}개`}
+            aria-selected={liked}
+          >
             <Text style={liked ? styles.likedIcon : styles.icon}>{liked ? '♥' : '♡'}</Text>
             <Text style={styles.sideCount}>{likeCount}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sideButton} onPress={onPressComment ?? onPress}>
+          <TouchableOpacity
+            style={styles.sideButton}
+            onPress={onPressComment ?? onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`댓글 ${post.commentCount}개`}
+          >
             <Text style={styles.icon}>💬</Text>
             <Text style={styles.sideCount}>{post.commentCount}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sideButton} onPress={handleShare}>
+          <TouchableOpacity
+            style={styles.sideButton}
+            onPress={handleShare}
+            accessibilityRole="button"
+            accessibilityLabel="공유하기"
+          >
             <Text style={styles.icon}>📤</Text>
           </TouchableOpacity>
         </View>

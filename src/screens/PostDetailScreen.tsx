@@ -264,7 +264,13 @@ export default function PostDetailScreen() {
                 </Text>
               ))}
               <View style={styles.actionsRow}>
-                <TouchableOpacity onPress={handleToggleLike} style={styles.actionButton}>
+                <TouchableOpacity
+                  onPress={handleToggleLike}
+                  style={styles.actionButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`좋아요 ${post.likeCount}개`}
+                  aria-selected={liked}
+                >
                   <Text style={liked ? styles.likedText : styles.actionText}>{liked ? '♥' : '♡'} {post.likeCount}</Text>
                 </TouchableOpacity>
                 <Text style={styles.actionText}>💬 {post.commentCount}</Text>
@@ -300,7 +306,13 @@ export default function PostDetailScreen() {
                 </View>
                 <Text style={styles.commentContent}>{comment.content}</Text>
                 <View style={styles.commentActionsRow}>
-                  <TouchableOpacity onPress={() => handleToggleCommentLike(comment)} style={styles.commentActionButton}>
+                  <TouchableOpacity
+                    onPress={() => handleToggleCommentLike(comment)}
+                    style={styles.commentActionButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`댓글 좋아요 ${comment.likeCount ?? 0}개`}
+                    aria-selected={commentLiked}
+                  >
                     <Text style={commentLiked ? styles.commentLikedText : styles.commentActionText}>
                       {commentLiked ? '♥' : '♡'} {comment.likeCount ?? 0}
                     </Text>

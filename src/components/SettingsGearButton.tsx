@@ -22,6 +22,8 @@ export default function SettingsGearButton({ inline }: Props) {
       style={[styles.button, !inline && { position: 'absolute', top: insets.top + spacing.sm, right: spacing.md, zIndex: 10 }]}
       onPress={() => navigation.navigate('Settings')}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel="설정"
     >
       <Text style={styles.icon}>⚙️</Text>
     </TouchableOpacity>
