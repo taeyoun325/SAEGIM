@@ -11,15 +11,17 @@ import { getLikedPostIds } from '../services/likeService';
 import PostCard from '../components/PostCard';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
-import { RootStackParamList } from '../navigation/types';
+import { RootStackParamList, MainTabParamList } from '../navigation/types';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+type TabNav = NativeStackNavigationProp<MainTabParamList>;
 
 export default function FeedScreen() {
   const navigation = useNavigation<Nav>();
+  const tabNavigation = useNavigation<TabNav>();
   const { user, profile } = useAuth();
   const blockedIds = profile?.blockedUserIds ?? [];
   const mutedKeywords = profile?.mutedKeywords ?? [];
@@ -148,7 +150,10 @@ export default function FeedScreen() {
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>아직 새겨진 생각이 없어요.{'\n'}첫 생각을 새겨보세요.</Text>
+            <Text style={styles.emptyText}>아직 새겨진 생각이 없어요.{'\n'}오늘의 글감으로 첫 생각을 새겨보세요.</Text>
+            <TouchableOpacity style={styles.emptyCta} onPress={() => tabNavigation.navigate('Today')}>
+              <Text style={styles.emptyCtaText}>오늘의 글감 보러 가기</Text>
+            </TouchableOpacity>
           </View>
         }
         ListFooterComponent={
@@ -201,4 +206,12 @@ const styles = StyleSheet.create({
   retryButtonText: { color: colors.primary, fontWeight: '600' },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22 },
+  emptyCta: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyCtaText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
