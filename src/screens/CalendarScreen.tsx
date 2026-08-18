@@ -108,11 +108,19 @@ export default function CalendarScreen() {
       <TopBarButtons />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setCursor(new Date(year, month - 1, 1))}>
+        <TouchableOpacity
+          onPress={() => setCursor(new Date(year, month - 1, 1))}
+          accessibilityRole="button"
+          accessibilityLabel="이전 달"
+        >
           <Text style={styles.nav}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{year}년 {month + 1}월</Text>
-        <TouchableOpacity onPress={() => setCursor(new Date(year, month + 1, 1))}>
+        <TouchableOpacity
+          onPress={() => setCursor(new Date(year, month + 1, 1))}
+          accessibilityRole="button"
+          accessibilityLabel="다음 달"
+        >
           <Text style={styles.nav}>›</Text>
         </TouchableOpacity>
       </View>
@@ -135,12 +143,18 @@ export default function CalendarScreen() {
             const isToday = dateStr === todayStr;
             const isFuture = dateStr > todayStr;
             const isPast = dateStr < todayStr;
+            // 작성 여부/오늘 여부를 색으로만 구분하고 있어서, 스크린리더에는 날짜 숫자만
+            // 읽혀 정작 가장 중요한 정보(썼는지 안 썼는지)가 전달되지 않았다.
+            // 같은 정보를 말로 풀어 라벨에 담는다.
+            const statusLabel = isFuture ? '아직 오지 않음' : hasWriting ? '작성함' : '작성 안 함';
             return (
               <TouchableOpacity
                 key={i}
                 style={[styles.cell, isFuture && styles.cellFuture]}
                 onPress={() => openDay(day)}
                 disabled={isFuture}
+                accessibilityRole="button"
+                accessibilityLabel={`${month + 1}월 ${day}일${isToday ? ', 오늘' : ''}, ${statusLabel}`}
               >
                 <View
                   style={[
