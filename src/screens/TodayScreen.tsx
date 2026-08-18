@@ -23,7 +23,7 @@ import { logEvent } from '../services/statsService';
 import { saveDraft, loadDraft, clearDraft, isPromptRevealed, markPromptRevealed } from '../services/draftService';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { todayDateString } from '../utils/date';
+import { todayDateString, yearsAgoPromptId } from '../utils/date';
 import PromptSticker from '../components/PromptSticker';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
@@ -42,6 +42,7 @@ export default function TodayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [memoryWriting, setMemoryWriting] = useState<Writing | null>(null);
   const writeStartLogged = useRef(false);
 
   const load = useCallback(async () => {
@@ -64,6 +65,9 @@ export default function TodayScreen() {
           }
         }
       }
+      // 1년 전 오늘 쓴 글이 있으면 회고 카드로 보여준다(없으면 조용히 넘어간다 —
+      // 가입한 지 1년이 안 된 사용자에겐 항상 없는 게 정상이다).
+      setMemoryWriting(await getMyWritingForPrompt(user.uid, yearsAgoPromptId(1)));
     } catch (e) {
       setError('오늘의 글감을 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
     } finally {
@@ -302,6 +306,17 @@ export default function TodayScreen() {
           {profile && profile.streakCount > 0 && (
             <Text style={styles.streak}>🔥 {profile.streakCount}일째 생각을 새겼어요</Text>
           )}
+
+          {memoryWriting && (
+            <View style={styles.memoryCard}>
+              <Text style={styles.memoryLabel}>🗓️ 1년 전 오늘</Text>
+              {memoryWriting.lines.map((line, i) => (
+                <Text key={i} style={styles.memoryLine}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          )}
         </>
       )}
       <BackgroundMascot source={require('../assets/mascot-today.png')} />
@@ -360,4 +375,15 @@ const styles = StyleSheet.create({
   buttonOutlineText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
   unpublishLink: { color: colors.textSoft, textAlign: 'center', marginTop: spacing.lg },
   streak: { textAlign: 'center', marginTop: spacing.lg, fontSize: 15, color: colors.primary },
+  memoryCard: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  memoryLabel: { color: colors.textSoft, fontSize: 13, fontWeight: '700', marginBottom: spacing.sm },
+  memoryLine: { color: colors.text, fontSize: 15, lineHeight: 22 },
 });

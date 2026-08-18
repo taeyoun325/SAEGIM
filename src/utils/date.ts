@@ -38,3 +38,15 @@ export function timestampToDateString(ms: number): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+// N년 전 오늘(같은 월/일)의 promptId를 구한다. "1년 전 오늘" 회고 카드에 쓴다.
+// 2/29처럼 대상 연도에 없는 날짜는 Date가 자동으로 다음 날로 보정한다(연 1회, 4년에 한 번뿐인
+// 아주 드문 경우라 별도 처리를 두지 않는다).
+export function yearsAgoPromptId(years: number): string {
+  const now = toServiceDate(new Date());
+  const past = new Date(now.getFullYear() - years, now.getMonth(), now.getDate());
+  const y = past.getFullYear();
+  const m = String(past.getMonth() + 1).padStart(2, '0');
+  const d = String(past.getDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+}
