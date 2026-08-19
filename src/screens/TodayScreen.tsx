@@ -276,7 +276,7 @@ export default function TodayScreen() {
           {hasWritten && (
             <View style={styles.doneBadge}>
               <Text style={styles.doneBadgeText}>✓ 오늘의 생각을 새겼어요.</Text>
-              <TouchableOpacity onPress={handleShare}>
+              <TouchableOpacity onPress={handleShare} accessibilityRole="button" accessibilityLabel="이미지로 공유하기">
                 <Text style={styles.shareLink}>📤 이미지로 공유하기</Text>
               </TouchableOpacity>
             </View>

@@ -338,7 +338,12 @@ export default function PostDetailScreen() {
                   <Text style={liked ? styles.likedText : styles.actionText}>{liked ? '♥' : '♡'} {post.likeCount}</Text>
                 </TouchableOpacity>
                 <Text style={styles.actionText}>💬 {post.commentCount}</Text>
-                <TouchableOpacity onPress={handleToggleSave}>
+                <TouchableOpacity
+                  onPress={handleToggleSave}
+                  accessibilityRole="button"
+                  accessibilityLabel={saved ? '저장 취소' : '저장하기'}
+                  aria-selected={saved}
+                >
                   <Text style={saved ? styles.savedText : styles.actionText}>{saved ? '🔖' : '📑'} 저장</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleShare}>

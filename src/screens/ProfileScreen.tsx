@@ -131,7 +131,13 @@ export default function ProfileScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.identityRow}>
-              <TouchableOpacity onPress={handlePickImage} disabled={uploadingPhoto} style={styles.avatarWrap}>
+              <TouchableOpacity
+                onPress={handlePickImage}
+                disabled={uploadingPhoto}
+                style={styles.avatarWrap}
+                accessibilityRole="button"
+                accessibilityLabel="프로필 사진 바꾸기"
+              >
                 {profile.photoURL ? (
                   <Image source={{ uri: profile.photoURL }} style={styles.avatar} />
                 ) : (
@@ -149,7 +155,12 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            <TouchableOpacity onPress={handleEditBio} style={styles.bioRow}>
+            <TouchableOpacity
+              onPress={handleEditBio}
+              style={styles.bioRow}
+              accessibilityRole="button"
+              accessibilityLabel={profile.bio ? `자기소개 수정, 현재: ${profile.bio}` : '자기소개 추가하기'}
+            >
               <Text style={profile.bio ? styles.bioText : styles.bioPlaceholder} numberOfLines={2}>
                 {profile.bio || '자기소개를 추가해보세요'}
               </Text>

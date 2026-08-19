@@ -213,10 +213,20 @@ export default function MyWritingsScreen() {
             <View style={styles.titleRow}>
               <Text style={styles.title}>내 새김 관리</Text>
               <View style={styles.titleButtons}>
-                <TouchableOpacity onPress={openTrash} style={styles.exportButton}>
+                <TouchableOpacity
+                  onPress={openTrash}
+                  style={styles.exportButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="휴지통 열기"
+                >
                   <Text style={styles.exportButtonText}>🗑 휴지통</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
+                <TouchableOpacity
+                  onPress={handleExport}
+                  style={styles.exportButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="내 새김 내보내기"
+                >
                   <Text style={styles.exportButtonText}>📤 내보내기</Text>
                 </TouchableOpacity>
               </View>

@@ -325,7 +325,13 @@ export default function SettingsScreen() {
           <Text style={styles.categoryHint}>이 단어가 들어간 글은 피드/캘린더에서 보이지 않아요. 눌러서 해제해요.</Text>
           <View style={styles.categoryRow}>
             {(profile?.mutedKeywords ?? []).map((k) => (
-              <TouchableOpacity key={k} style={styles.mutedChip} onPress={() => handleRemoveMutedKeyword(k)}>
+              <TouchableOpacity
+                key={k}
+                style={styles.mutedChip}
+                onPress={() => handleRemoveMutedKeyword(k)}
+                accessibilityRole="button"
+                accessibilityLabel={`뮤트 단어 ${k} 해제`}
+              >
                 <Text style={styles.mutedChipText}>{k} ✕</Text>
               </TouchableOpacity>
             ))}
