@@ -397,6 +397,7 @@ export default function PostDetailScreen() {
                       maxLength={COMMENT_MAX_LENGTH}
                       multiline
                     />
+                    <Text style={styles.commentCounter}>{editCommentText.length}/{COMMENT_MAX_LENGTH}</Text>
                     <View style={styles.commentActionsRow}>
                       <TouchableOpacity onPress={cancelEditComment} disabled={savingEdit}>
                         <Text style={styles.commentActionText}>취소</Text>
@@ -460,18 +461,21 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
-      <View style={styles.commentInputRow}>
-        <TextInput
-          style={styles.commentInput}
-          placeholder={replyingTo ? '답글을 입력하세요' : '댓글을 입력하세요'}
-          placeholderTextColor={colors.textSoft}
-          value={commentText}
-          onChangeText={setCommentText}
-          maxLength={COMMENT_MAX_LENGTH}
-        />
-        <TouchableOpacity onPress={handleAddComment} disabled={posting}>
-          <Text style={styles.sendText}>등록</Text>
-        </TouchableOpacity>
+      <View style={styles.commentInputWrap}>
+        <Text style={styles.commentCounter}>{commentText.length}/{COMMENT_MAX_LENGTH}</Text>
+        <View style={styles.commentInputRow}>
+          <TextInput
+            style={styles.commentInput}
+            placeholder={replyingTo ? '답글을 입력하세요' : '댓글을 입력하세요'}
+            placeholderTextColor={colors.textSoft}
+            value={commentText}
+            onChangeText={setCommentText}
+            maxLength={COMMENT_MAX_LENGTH}
+          />
+          <TouchableOpacity onPress={handleAddComment} disabled={posting}>
+            <Text style={styles.sendText}>등록</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -527,6 +531,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   commentSaveText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  commentCounter: { color: colors.textSoft, fontSize: 12, textAlign: 'right', marginTop: spacing.xs },
   replyBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -537,14 +542,19 @@ const styles = StyleSheet.create({
   },
   replyBannerText: { color: colors.primary, fontSize: 12 },
   replyBannerCancel: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
-  commentInputRow: {
-    flexDirection: 'row',
-    padding: spacing.md,
+  commentInputWrap: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.card,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.md,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   commentInput: { flex: 1, backgroundColor: colors.background, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.text },
   sendText: { color: colors.primary, fontWeight: '700' },
