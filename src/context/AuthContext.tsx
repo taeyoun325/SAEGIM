@@ -9,6 +9,7 @@ import {
   deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { createUserProfile, getUserProfile } from '../services/userService';
@@ -32,6 +33,7 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string, nickname: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -105,6 +107,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   }
 
+  async function resetPassword(email: string) {
+    await sendPasswordResetEmail(auth, email);
+  }
+
   async function signOut() {
     await firebaseSignOut(auth);
   }
@@ -146,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signUp,
         signIn,
+        resetPassword,
         signOut,
         deleteAccount,
         refreshProfile,
