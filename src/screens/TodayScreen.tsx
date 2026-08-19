@@ -9,10 +9,12 @@ import {
 } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../constants/theme';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { DailyPrompt, Writing } from '../types/models';
+import { MainTabParamList } from '../navigation/types';
 import { getTodayPrompt } from '../services/promptService';
 import { createWriting, getMyWritingForPrompt, validateLines, updateWritingContent } from '../services/writingService';
 import { publishWriting, unpublishPost, updatePostContent } from '../services/postService';
@@ -31,7 +33,10 @@ import TopBarButtons from '../components/TopBarButtons';
 import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
 import { useShare } from '../context/ShareContext';
 
+type TabNav = NativeStackNavigationProp<MainTabParamList>;
+
 export default function TodayScreen() {
+  const tabNavigation = useNavigation<TabNav>();
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const { share } = useShare();
@@ -278,6 +283,13 @@ export default function TodayScreen() {
               <Text style={styles.doneBadgeText}>✓ 오늘의 생각을 새겼어요.</Text>
               <TouchableOpacity onPress={handleShare} accessibilityRole="button" accessibilityLabel="이미지로 공유하기">
                 <Text style={styles.shareLink}>📤 이미지로 공유하기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => tabNavigation.navigate('Feed')}
+                accessibilityRole="button"
+                accessibilityLabel="다른 사람들의 생각 보러가기"
+              >
+                <Text style={styles.shareLink}>💬 다른 사람들은 뭐라고 답했을까요?</Text>
               </TouchableOpacity>
             </View>
           )}
