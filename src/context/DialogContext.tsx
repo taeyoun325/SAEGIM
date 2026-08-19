@@ -84,9 +84,13 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Modal visible={state.visible} transparent animationType="fade" onRequestClose={handleCancelPress}>
         <View style={styles.backdrop}>
-          <View style={styles.card}>
-            <Text style={styles.title}>{state.title}</Text>
-            {state.message ? <Text style={styles.message}>{state.message}</Text> : null}
+          <View style={styles.card} accessibilityViewIsModal accessibilityRole={state.mode === 'notify' ? 'alert' : undefined}>
+            {/* 다이얼로그가 뜨는 순간 스크린리더가 포커스 이동 없이도 내용을 바로 읽어주도록
+                실시간 알림 영역으로 표시한다 — 안 그러면 사용자가 직접 다음 요소로 넘겨봐야 안다. */}
+            <Text style={styles.title} accessibilityLiveRegion="assertive">{state.title}</Text>
+            {state.message ? (
+              <Text style={styles.message} accessibilityLiveRegion="assertive">{state.message}</Text>
+            ) : null}
             {state.mode === 'prompt' && (
               <TextInput
                 style={styles.input}
