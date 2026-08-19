@@ -17,6 +17,10 @@ export type ColorTokens = {
   success: string;
 };
 
+// textSoft/danger/success는 기존 값이 카드(#FFFFFF) 위에서 4.5:1에 못 미쳐(각각
+// 3.86 · 3.33 · 3.17) 작은 본문 글자(날짜, 오류 메시지, 공개/비공개 배지 등)에는
+// WCAG AA 기준 미달이었다. 같은 색조를 유지한 채 명도만 낮춰 배경/카드 양쪽에서
+// 4.5:1 이상이 되도록 다시 잡았다(textSoft 4.9~5.1 · danger 4.6~4.7 · success 4.6~4.7).
 export const lightColors: ColorTokens = {
   background: '#FFFBF5',
   card: '#FFFFFF',
@@ -24,10 +28,10 @@ export const lightColors: ColorTokens = {
   accent: '#E8A87C',
   accentSoft: '#F6E3D4',
   text: '#2E2A26',
-  textSoft: '#8A8078',
+  textSoft: '#756D66',
   border: '#EEE5DA',
-  danger: '#D96C6C',
-  success: '#6C9A8B',
+  danger: '#B25959',
+  success: '#567B6F',
 };
 
 // 대비는 브라우저에서 실측해 맞췄다(라이트 모드 대비 회귀가 없도록):
