@@ -471,6 +471,8 @@ export default function PostDetailScreen() {
             value={commentText}
             onChangeText={setCommentText}
             maxLength={COMMENT_MAX_LENGTH}
+            returnKeyType="send"
+            onSubmitEditing={handleAddComment}
           />
           <TouchableOpacity onPress={handleAddComment} disabled={posting}>
             <Text style={styles.sendText}>등록</Text>
