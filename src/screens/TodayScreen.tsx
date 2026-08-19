@@ -283,6 +283,7 @@ export default function TodayScreen() {
           )}
 
           <Text style={styles.guide}>이 글감을 보고 떠오른 생각을 새겨보세요.</Text>
+          {!hasWritten && <Text style={styles.lengthReassurance}>한 줄이어도 충분해요.</Text>}
           {draftRestored && <Text style={styles.draftBanner}>📝 작성 중이던 내용을 불러왔어요.</Text>}
           {!hasWritten && profile && profile.streakCount > 0 && (profile.streakFreezes ?? 0) === 0 && (
             <Text style={styles.streakRiskBanner}>
@@ -370,7 +371,8 @@ const styles = StyleSheet.create({
   doneBadgeText: { color: colors.success, fontWeight: '600' },
   shareLink: { color: colors.primary, fontWeight: '600', marginTop: spacing.xs },
   offscreen: { position: 'absolute', top: 0, left: -9999 },
-  guide: { color: colors.textSoft, marginBottom: spacing.md },
+  guide: { color: colors.textSoft, marginBottom: spacing.xs },
+  lengthReassurance: { color: colors.textSoft, fontSize: 12, fontStyle: 'italic', marginBottom: spacing.md },
   draftBanner: { color: colors.primary, fontSize: 12, marginBottom: spacing.sm },
   streakRiskBanner: { color: colors.danger, fontSize: 12, fontWeight: '600', marginBottom: spacing.sm },
   writeInput: {

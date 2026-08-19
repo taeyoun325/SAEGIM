@@ -19,8 +19,18 @@ export default function OnboardingScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const isLast = page === PAGES.length - 1;
 
+  async function skip() {
+    await markOnboardingDone();
+    navigation.replace('Login');
+  }
+
   return (
     <View style={[styles.container, { width }]}>
+      {!isLast && (
+        <TouchableOpacity style={styles.skipButton} onPress={skip} accessibilityRole="button" accessibilityLabel="건너뛰고 바로 시작하기">
+          <Text style={styles.skipButtonText}>건너뛰기</Text>
+        </TouchableOpacity>
+      )}
       <View style={styles.content}>
         <Text style={styles.title}>{PAGES[page].title}</Text>
         <Text style={styles.body}>{PAGES[page].body}</Text>
@@ -37,8 +47,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             setPage(page + 1);
             return;
           }
-          await markOnboardingDone();
-          navigation.replace('Login');
+          await skip();
         }}
       >
         <Text style={styles.buttonText}>{isLast ? '시작하기' : '다음'}</Text>
@@ -49,6 +58,8 @@ export default function OnboardingScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, justifyContent: 'space-between', padding: spacing.lg },
+  skipButton: { alignSelf: 'flex-end', paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
+  skipButtonText: { color: colors.textSoft, fontSize: 14 },
   content: { flex: 1, justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
   body: { fontSize: 16, color: colors.textSoft, lineHeight: 26 },
