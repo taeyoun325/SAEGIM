@@ -22,6 +22,11 @@ const TAGS = `
     <meta property="og:description" content="매일 하나의 글감, 나만의 3줄." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/icons/icon-512.png" />
+    <!-- X(트위터) 공유 미리보기: og:* 와 별도 태그라 빠져 있으면 이미지 없는 링크로만 보인다 -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="새김 - 오늘의 생각을 새기다" />
+    <meta name="twitter:description" content="매일 하나의 글감, 나만의 3줄." />
+    <meta name="twitter:image" content="/icons/icon-512.png" />
 `;
 
 const SW_REGISTER = `
