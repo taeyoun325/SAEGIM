@@ -11,6 +11,7 @@ import {
   reauthenticateWithCredential,
   sendPasswordResetEmail,
   updatePassword,
+  verifyBeforeUpdateEmail,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { createUserProfile, getUserProfile } from '../services/userService';
@@ -36,6 +37,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changeEmail: (currentPassword: string, newEmail: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -123,6 +125,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updatePassword(current, newPassword);
   }
 
+  // 이메일 변경은 새 이메일로 인증 링크를 보내고, 사용자가 그 링크를 눌러야
+  // 실제로 바뀐다(Firebase가 서버 쪽에서 처리) — 이 함수가 끝나도 아직 안 바뀐 상태다.
+  // 예전 updateEmail은 미인증 이메일로도 즉시 바꿀 수 있어 계정 탈취 위험이 있었는데,
+  // verifyBeforeUpdateEmail은 그 문제를 원천적으로 막는다.
+  async function changeEmail(currentPassword: string, newEmail: string) {
+    const current = auth.currentUser;
+    if (!current || !current.email) return;
+    const credential = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, credential);
+    await verifyBeforeUpdateEmail(current, newEmail);
+  }
+
   async function signOut() {
     await firebaseSignOut(auth);
   }
@@ -166,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         resetPassword,
         changePassword,
+        changeEmail,
         signOut,
         deleteAccount,
         refreshProfile,

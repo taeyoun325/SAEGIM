@@ -63,7 +63,7 @@ const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] =
 ];
 
 export default function SettingsScreen() {
-  const { user, profile, signOut, deleteAccount, changePassword, refreshProfile } = useAuth();
+  const { user, profile, signOut, deleteAccount, changePassword, changeEmail, refreshProfile } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
@@ -227,6 +227,43 @@ export default function SettingsScreen() {
         await notify('오류', '현재 비밀번호가 올바르지 않아요.');
       } else {
         await notify('오류', '비밀번호 변경에 실패했어요.');
+      }
+    }
+  }
+
+  async function handleChangeEmail() {
+    const currentPassword = await prompt({
+      title: '이메일 변경',
+      message: '보안을 위해 현재 비밀번호를 입력해주세요.',
+      placeholder: '현재 비밀번호',
+      secure: true,
+      confirmLabel: '다음',
+    });
+    if (!currentPassword) return;
+
+    const newEmail = await prompt({
+      title: '새 이메일',
+      message: '새로 사용할 이메일 주소를 입력해주세요.',
+      placeholder: '새 이메일',
+      confirmLabel: '인증 메일 보내기',
+    });
+    if (!newEmail || !newEmail.trim()) return;
+
+    try {
+      await changeEmail(currentPassword, newEmail.trim());
+      await notify(
+        '인증 메일을 보냈어요',
+        '새 이메일 주소로 확인 메일을 보냈어요. 메일함의 링크를 눌러야 변경이 완료돼요.'
+      );
+    } catch (e: any) {
+      if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
+        await notify('오류', '현재 비밀번호가 올바르지 않아요.');
+      } else if (e?.code === 'auth/invalid-email') {
+        await notify('오류', '이메일 형식을 확인해주세요.');
+      } else if (e?.code === 'auth/email-already-in-use') {
+        await notify('오류', '이미 사용 중인 이메일이에요.');
+      } else {
+        await notify('오류', '이메일 변경에 실패했어요.');
       }
     }
   }
@@ -407,6 +444,9 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.card}>
+        <TouchableOpacity style={styles.rowButton} onPress={handleChangeEmail}>
+          <Text style={styles.rowButtonText}>이메일 변경</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.rowButton} onPress={handleChangePassword}>
           <Text style={styles.rowButtonText}>비밀번호 변경</Text>
         </TouchableOpacity>
