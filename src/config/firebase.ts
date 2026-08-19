@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeAuth, getAuth, Persistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -36,5 +36,14 @@ export const auth =
         }
       })();
 
-export const db = getFirestore(app);
+// 웹은 IndexedDB 영속 캐시를 켜서 오프라인에서도 이미 읽은 피드/캘린더를 볼 수 있고,
+// 새 글도 로컬에 큐로 쌓였다가 연결이 돌아오면 자동으로 전송된다(지하철 등 저신호 환경
+// 대응 — 저널링 앱의 "낮은 마찰"이 리텐션의 핵심이라는 조사 결과를 반영했다).
+// 네이티브(RN JS SDK)는 이 캐시가 실험적이라 실기기 검증 없이는 켜지 않는다.
+export const db =
+  Platform.OS === 'web'
+    ? initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      })
+    : getFirestore(app);
 export const storage = getStorage(app);
