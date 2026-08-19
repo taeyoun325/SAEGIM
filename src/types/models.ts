@@ -115,6 +115,18 @@ export interface AppNotification {
   read: boolean;
 }
 
+// 일회용 로그인 코드: 이메일이 없는 사용자(예: 학생)에게 5자리 숫자 코드만 나눠주고
+// 그 코드가 곧 계정 아이디+비밀번호 역할을 하게 한다. Admin SDK로만 생성되며,
+// 클라이언트는 이 문서를 코드로 직접 조회(get)해서 로그인 정보를 얻는다 — list는 막혀 있어
+// 코드를 순회로 알아낼 수 없다.
+export interface LoginCode {
+  email: string;
+  password: string;
+  claimed: boolean;
+  uid: string | null;
+  createdAt: number;
+}
+
 // 관리자 통계용 일별 집계 카운터. 원문 콘텐츠는 담지 않고 개수/uid만 담아
 // 관리자가 사용자의 비공개 글 내용을 열람하지 않아도 지표를 볼 수 있게 한다.
 export interface DailyStats {

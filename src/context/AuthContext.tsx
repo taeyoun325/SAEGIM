@@ -16,6 +16,7 @@ import {
 import { auth } from '../config/firebase';
 import { createUserProfile, getUserProfile } from '../services/userService';
 import { reserveNickname } from '../services/nicknameService';
+import { signInWithLoginCode } from '../services/loginCodeService';
 import { deleteAllUserContent } from '../services/accountService';
 import { logEvent } from '../services/statsService';
 import { getUnreadCount } from '../services/inboxService';
@@ -35,6 +36,8 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string, nickname: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  loginWithCode: (code: string) => Promise<{ needsNickname: boolean }>;
+  completeCodeSignup: (nickname: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   changeEmail: (currentPassword: string, newEmail: string) => Promise<void>;
@@ -111,6 +114,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
   }
 
+  // 이메일이 없는 사용자(예: 학생)를 위한 5자리 코드 로그인. 처음 쓰는 코드면
+  // 아직 닉네임이 없으므로(users/{uid} 프로필 없음) needsNickname을 true로 돌려주고,
+  // 화면에서 completeCodeSignup으로 마무리해야 한다.
+  async function loginWithCode(code: string): Promise<{ needsNickname: boolean }> {
+    const { uid, hasProfile } = await signInWithLoginCode(code);
+    if (hasProfile) {
+      setProfile(await getUserProfile(uid));
+    }
+    return { needsNickname: !hasProfile };
+  }
+
+  // 코드로 처음 로그인한 사용자가 닉네임을 정하는 단계. 이미 인증은 끝난 상태라
+  // signUp과 달리 계정을 새로 만들지 않고, 실패해도 롤백할 계정이 없다(코드는 계속 재사용됨).
+  async function completeCodeSignup(nickname: string): Promise<void> {
+    const current = auth.currentUser;
+    if (!current) throw new Error('로그인 상태가 아니에요.');
+    const { valid, reason } = validateNickname(nickname);
+    if (!valid) throw new Error(reason);
+    await reserveNickname(nickname, current.uid);
+    setProfile(await createUserProfile(current.uid, nickname.trim()));
+  }
+
   async function resetPassword(email: string) {
     await sendPasswordResetEmail(auth, email);
   }
@@ -178,6 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signUp,
         signIn,
+        loginWithCode,
+        completeCodeSignup,
         resetPassword,
         changePassword,
         changeEmail,

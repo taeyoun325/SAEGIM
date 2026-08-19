@@ -11,12 +11,18 @@ import { colors, spacing, radius } from '../constants/theme';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, resetPassword } = useAuth();
+  const { signIn, resetPassword, loginWithCode } = useAuth();
   const { prompt, notify } = useDialog();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 이메일이 없는 사용자(예: 학생)를 위한 5자리 코드 로그인 모드.
+  // 코드 로그인이 처음이면(닉네임 미설정) RootNavigator가 알아서 ProfileSetupScreen으로
+  // 넘겨주므로, 이 화면은 로그인 시도만 하고 그 이후는 신경 쓰지 않는다.
+  const [mode, setMode] = useState<'email' | 'code'>('email');
+  const [code, setCode] = useState('');
 
   async function handleLogin() {
     setError(null);
@@ -26,6 +32,21 @@ export default function LoginScreen({ navigation }: Props) {
     } catch (e) {
       setError('로그인에 실패했어요. 이메일과 비밀번호를 확인해주세요.');
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCodeLogin() {
+    setError(null);
+    if (!/^\d{5}$/.test(code.trim())) {
+      setError('5자리 숫자 코드를 입력해주세요.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await loginWithCode(code.trim());
+    } catch (e) {
+      setError('유효하지 않은 코드예요. 코드를 다시 확인해주세요.');
       setLoading(false);
     }
   }
@@ -51,6 +72,35 @@ export default function LoginScreen({ navigation }: Props) {
     await notify(
       '메일을 보냈어요',
       '입력하신 이메일로 가입된 계정이 있다면 비밀번호 재설정 링크를 보내드렸어요. 받은 편지함(스팸함 포함)을 확인해주세요.'
+    );
+  }
+
+  if (mode === 'code') {
+    return (
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Text style={styles.logo}>새김</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="5자리 코드"
+          placeholderTextColor={colors.textSoft}
+          keyboardType="number-pad"
+          maxLength={5}
+          value={code}
+          onChangeText={(t) => setCode(t.replace(/[^0-9]/g, ''))}
+        />
+        {error && <Text style={styles.error}>{error}</Text>}
+        <TouchableOpacity style={styles.button} onPress={handleCodeLogin} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>로그인</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            setMode('email');
+            setError(null);
+          }}
+        >
+          <Text style={styles.link}>이메일로 로그인하기</Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -83,6 +133,14 @@ export default function LoginScreen({ navigation }: Props) {
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
         <Text style={styles.link}>계정이 없으신가요? 회원가입</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => {
+          setMode('code');
+          setError(null);
+        }}
+      >
+        <Text style={styles.link}>코드가 있으신가요? 코드로 로그인</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );

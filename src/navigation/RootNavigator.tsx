@@ -20,6 +20,7 @@ import MyWritingsScreen from '../screens/MyWritingsScreen';
 import SavedPostsScreen from '../screens/SavedPostsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SplashScreen from '../screens/SplashScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -77,7 +78,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
@@ -89,10 +90,15 @@ export default function RootNavigator() {
     return <SplashScreen />;
   }
 
+  // 코드 로그인은 인증(user)과 프로필 생성(닉네임 입력) 사이에 사람이 개입하는
+  // 구간이 있다 — user만 보고 바로 MainTabs로 넘어가면 프로필 없는 상태로
+  // 진입해버리므로, profile까지 생겼을 때만 실제 앱 화면을 보여준다.
   return (
     <NavigationContainer theme={navigationTheme} linking={linking}>
       {!user ? (
         <AuthNavigator />
+      ) : !profile ? (
+        <ProfileSetupScreen />
       ) : (
         <Stack.Navigator>
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
