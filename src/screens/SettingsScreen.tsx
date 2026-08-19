@@ -349,6 +349,9 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('MyReports')}>
           <Text style={styles.rowButtonText}>내 신고 내역</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('CommunityGuidelines')}>
+          <Text style={styles.rowButtonText}>커뮤니티 가이드라인</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.rowButton, styles.rowButtonNoBorder]} onPress={() => navigation.navigate('PrivacyPolicy')}>
           <Text style={styles.rowButtonText}>개인정보처리방침</Text>
         </TouchableOpacity>

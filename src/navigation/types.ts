@@ -19,6 +19,7 @@ export type RootStackParamList = {
   BlockedUsers: undefined;
   MyReports: undefined;
   PrivacyPolicy: undefined;
+  CommunityGuidelines: undefined;
   AdminReports: undefined;
   AdminDashboard: undefined;
   Settings: undefined;
