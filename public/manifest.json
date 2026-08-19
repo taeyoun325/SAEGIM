@@ -34,5 +34,28 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "오늘의 글감 쓰기",
+      "short_name": "오늘 글쓰기",
+      "description": "오늘의 글감을 보고 바로 새겨보세요",
+      "url": "/MainTabs/Today",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "피드 보기",
+      "short_name": "피드",
+      "description": "오늘 다른 사람들이 새긴 생각을 읽어보세요",
+      "url": "/MainTabs/Feed",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "알림함",
+      "short_name": "알림",
+      "description": "안 읽은 알림을 확인해요",
+      "url": "/Notifications",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

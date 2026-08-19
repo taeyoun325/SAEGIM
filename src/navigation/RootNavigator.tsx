@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { colors, getIsDarkMode } from '../constants/theme';
@@ -42,6 +42,40 @@ const navigationTheme = {
   },
 };
 
+// 명시적 linking 설정 없이는 웹에서 새로고침(콜드 로드)으로 들어온 중첩 경로
+// (예: /MainTabs/Feed)가 기본 탭(Today)으로 돌아가버린다 — React Navigation의
+// 자동 경로 추론이 탭 내비게이터처럼 중첩된 구조까지는 안정적으로 못 맞추기
+// 때문이다. PWA 바로가기(manifest.json shortcuts)가 정확한 화면으로 열리려면
+// 이 설정이 꼭 필요하고, 링크 공유·북마크 전반에도 함께 적용된다.
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [],
+  config: {
+    screens: {
+      MainTabs: {
+        screens: {
+          Today: 'MainTabs/Today',
+          Feed: 'MainTabs/Feed',
+          Calendar: 'MainTabs/Calendar',
+          Profile: 'MainTabs/Profile',
+        },
+      },
+      PostDetail: 'PostDetail',
+      OtherProfile: 'OtherProfile',
+      Report: 'Report',
+      BlockedUsers: 'BlockedUsers',
+      MyReports: 'MyReports',
+      PrivacyPolicy: 'PrivacyPolicy',
+      CommunityGuidelines: 'CommunityGuidelines',
+      AdminReports: 'AdminReports',
+      AdminDashboard: 'AdminDashboard',
+      Settings: 'Settings',
+      MyWritings: 'MyWritings',
+      SavedPosts: 'SavedPosts',
+      Notifications: 'Notifications',
+    },
+  },
+};
+
 export default function RootNavigator() {
   const { user, loading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
@@ -56,7 +90,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme} linking={linking}>
       {!user ? (
         <AuthNavigator />
       ) : (
