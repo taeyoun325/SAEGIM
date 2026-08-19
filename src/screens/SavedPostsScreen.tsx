@@ -16,7 +16,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SavedPostsScreen() {
   const navigation = useNavigation<Nav>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
@@ -24,11 +24,16 @@ export default function SavedPostsScreen() {
 
   // 저장한 글이 쌓일수록 예전에 저장해둔 특정 글을 다시 찾기 어려워진다
   // ("저장은 쉬운데 나중에 찾기가 어렵다"는 게 북마크 기능의 흔한 약점이다).
+  // 차단은 피드/캘린더/댓글/알림함과 마찬가지로 여기서도 적용돼야 한다 —
+  // 저장해둔 뒤에 그 사람을 차단했다면 더 이상 보이면 안 된다(지금까지 이
+  // 화면만 빠져 있었다).
   const filtered = useMemo(() => {
+    const blockedIds = profile?.blockedUserIds ?? [];
+    const visible = blockedIds.length === 0 ? posts : posts.filter((p) => !blockedIds.includes(p.userId));
     const q = query.trim();
-    if (!q) return posts;
-    return posts.filter((p) => p.lines.some((l) => l.includes(q)));
-  }, [posts, query]);
+    if (!q) return visible;
+    return visible.filter((p) => p.lines.some((l) => l.includes(q)));
+  }, [posts, query, profile?.blockedUserIds]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -74,7 +79,11 @@ export default function SavedPostsScreen() {
       ListEmptyComponent={
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
-            {query ? '검색 결과가 없어요.' : '저장한 글이 없어요.\n마음에 드는 글을 저장해보세요.'}
+            {query
+              ? '검색 결과가 없어요.'
+              : posts.length > 0
+                ? '저장한 글이 모두 차단한 사용자의 글이라 보이지 않아요.'
+                : '저장한 글이 없어요.\n마음에 드는 글을 저장해보세요.'}
           </Text>
         </View>
       }
