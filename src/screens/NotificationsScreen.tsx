@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Text from '../components/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -43,6 +43,49 @@ const ICON: Record<AppNotification['type'], string> = {
 const REPORT_TYPES = new Set<AppNotification['type']>(['report_resolved', 'report_dismissed', 'content_removed']);
 const NON_NAVIGABLE_TYPES = new Set<AppNotification['type']>(['report_resolved', 'content_removed']);
 
+// 좋아요는 인기 글일수록 같은 글/댓글에 짧은 시간 안에 몰려서 알림함이 "OO님이 좋아요를
+// 눌렀어요"만 여러 줄 반복하는 식으로 뒤덮인다 — 알림 과부하가 사용자를 지치게 한다는
+// 조사 결과를 반영해, 같은 대상(글/댓글)에 대한 좋아요는 한 줄로 묶어서 보여준다.
+// 댓글·답글은 각각 내용이 다르므로 묶지 않는다(묶으면 정말 궁금한 정보가 사라진다).
+const GROUPABLE_TYPES = new Set<AppNotification['type']>(['post_like', 'comment_like']);
+
+interface DisplayRow {
+  id: string;
+  type: AppNotification['type'];
+  postId: string;
+  createdAt: number;
+  read: boolean;
+  actorNickname: string;
+  extraCount: number; // 대표 행위자 외 추가 인원 수 (0이면 묶이지 않은 단일 알림)
+}
+
+// 서버 쿼리가 이미 createdAt desc로 정렬해 주므로, 같은 키를 처음 만나는 시점이 항상
+// 가장 최근 알림이다 — 그 알림을 대표로 삼고 나머지는 개수만 더한다.
+function groupNotifications(rows: Row[]): DisplayRow[] {
+  const groups = new Map<string, DisplayRow>();
+  const order: string[] = [];
+  for (const r of rows) {
+    const key = GROUPABLE_TYPES.has(r.type) ? `${r.type}_${r.postId}_${r.commentId ?? ''}` : r.id;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.extraCount += 1;
+      existing.read = existing.read && r.read;
+    } else {
+      groups.set(key, {
+        id: r.id,
+        type: r.type,
+        postId: r.postId,
+        createdAt: r.createdAt,
+        read: r.read,
+        actorNickname: r.actorNickname,
+        extraCount: 0,
+      });
+      order.push(key);
+    }
+  }
+  return order.map((k) => groups.get(k)!);
+}
+
 export default function NotificationsScreen() {
   const navigation = useNavigation<Nav>();
   const { user, profile, refreshUnreadNotifications } = useAuth();
@@ -83,6 +126,8 @@ export default function NotificationsScreen() {
     }, [load])
   );
 
+  const displayRows = useMemo(() => groupNotifications(rows), [rows]);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -94,7 +139,7 @@ export default function NotificationsScreen() {
   return (
     <FlatList
       style={styles.container}
-      data={rows}
+      data={displayRows}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.list}
       ListEmptyComponent={
@@ -118,8 +163,14 @@ export default function NotificationsScreen() {
             <Text style={styles.icon}>{ICON[item.type]}</Text>
             <View style={styles.textCol}>
               <Text style={styles.message}>
-                {!isReport && <Text style={styles.nickname}>{item.actorNickname}</Text>}
-                {MESSAGE[item.type]}
+                {!isReport && (
+                  <Text style={styles.nickname}>
+                    {item.actorNickname}
+                    {item.extraCount > 0 ? `님 외 ${item.extraCount}명` : ''}
+                  </Text>
+                )}
+                {/* "OO님 외 N명" 뒤엔 "님이"가 아니라 "이"로 이어야 자연스럽다("N명님이"는 어색함) */}
+                {item.extraCount > 0 ? MESSAGE[item.type].replace(/^님이/, '이') : MESSAGE[item.type]}
               </Text>
               <Text style={styles.date}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
             </View>
