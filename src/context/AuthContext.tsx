@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -65,6 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return unsub;
   }, []);
+
+  // 설치된 PWA 아이콘에 안 읽은 알림 수를 배지로 띄운다(installed PWA만 실제로 보임).
+  // Badging API는 Chrome/Edge 계열만 지원해(Firefox 미지원) 존재 여부를 먼저 확인한다.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !('setAppBadge' in navigator)) return;
+    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (unreadNotifications > 0) {
+      nav.setAppBadge?.(unreadNotifications).catch(() => {});
+    } else {
+      nav.clearAppBadge?.().catch(() => {});
+    }
+  }, [unreadNotifications]);
 
   async function refreshUnreadNotifications() {
     if (!user) return;
