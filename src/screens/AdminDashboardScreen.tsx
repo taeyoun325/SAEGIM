@@ -13,6 +13,7 @@ import {
 } from '../services/adminService';
 import { createPrompt } from '../services/promptService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
+import { getLoginCodeStats, LoginCodeSummary } from '../services/loginCodeService';
 import { useDialog } from '../context/DialogContext';
 import { DailyStats } from '../types/models';
 
@@ -48,6 +49,8 @@ export default function AdminDashboardScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState(PROMPT_CATEGORIES[0]);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [codeStats, setCodeStats] = useState<LoginCodeSummary[] | null>(null);
+  const [loadingCodes, setLoadingCodes] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,17 @@ export default function AdminDashboardScreen() {
       load();
     }, [load])
   );
+
+  async function loadCodeStats() {
+    setLoadingCodes(true);
+    try {
+      setCodeStats(await getLoginCodeStats());
+    } catch (e) {
+      await notify('오류', '코드 발급 현황을 불러오지 못했어요.');
+    } finally {
+      setLoadingCodes(false);
+    }
+  }
 
   async function handleAddPrompt() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate.trim())) {
@@ -113,7 +127,7 @@ export default function AdminDashboardScreen() {
         <>
           <View style={styles.grid}>
             <StatCard label="신규 가입" value={stats?.newSignups ?? 0} />
-            <StatCard label="활성 사용자" value={stats?.activeUserIds.length ?? 0} />
+            <StatCard label="활성 사용자" value={stats?.activeUserIds?.length ?? 0} />
             <StatCard label="글 작성" value={stats?.writingsCount ?? 0} />
             <StatCard label="댓글" value={stats?.commentsCount ?? 0} />
             <StatCard label="좋아요" value={stats?.likesCount ?? 0} />
@@ -174,6 +188,37 @@ export default function AdminDashboardScreen() {
 
       <TouchableOpacity style={styles.refreshButton} onPress={load} disabled={loading}>
         <Text style={styles.refreshButtonText}>새로고침</Text>
+      </TouchableOpacity>
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>로그인 코드 발급 현황</Text>
+      <Text style={styles.sectionHint}>이메일 없는 사용자에게 나눠준 5자리 코드 중 실제로 로그인한 코드를 확인해요.</Text>
+      {codeStats && (
+        <View style={styles.grid}>
+          <StatCard label="발급" value={codeStats.length} />
+          <StatCard label="사용됨" value={codeStats.filter((c) => c.claimed).length} />
+          <StatCard label="미사용" value={codeStats.filter((c) => !c.claimed).length} />
+        </View>
+      )}
+      {codeStats && (
+        <View style={styles.codeList}>
+          {codeStats.map((c) => (
+            <View key={c.code} style={styles.codeRow}>
+              <Text style={styles.codeText}>{c.code}</Text>
+              <Text style={c.claimed ? styles.codeClaimed : styles.codeUnclaimed}>
+                {c.claimed ? `✓ ${c.nickname ?? '(닉네임 없음)'}` : '미사용'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+      <TouchableOpacity style={styles.refreshButton} onPress={loadCodeStats} disabled={loadingCodes}>
+        {loadingCodes ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <Text style={styles.refreshButtonText}>{codeStats ? '코드 현황 새로고침' : '코드 현황 보기'}</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.divider} />
@@ -281,4 +326,15 @@ const styles = StyleSheet.create({
   categoryChipTextSelected: { color: '#fff' },
   addButton: { backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
   addButtonText: { color: '#fff', fontWeight: '700' },
+  codeList: { marginTop: spacing.md, marginBottom: spacing.md },
+  codeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  codeText: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  codeClaimed: { color: colors.success, fontSize: 13 },
+  codeUnclaimed: { color: colors.textSoft, fontSize: 13 },
 });

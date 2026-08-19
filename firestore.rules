@@ -63,13 +63,14 @@ service cloud.firestore {
 
     // 일회용 로그인 코드: 이메일이 없는 사용자(학생 등)에게 5자리 코드만 나눠주고,
     // 그 코드가 미리 만들어둔 계정의 이메일/비밀번호를 가리키게 한다.
-    // list를 막아 코드를 순회로 알아낼 수 없게 하고, get은 코드를 이미 아는 사람만
-    // (로그인 전이라도) 문서 ID로 직접 조회할 수 있어야 해서 열어둔다.
+    // list는 관리자만 허용해(발급 현황 확인용) 일반 사용자가 코드를 순회로 알아낼 수
+    // 없게 하고, get은 코드를 이미 아는 사람만(로그인 전이라도) 문서 ID로 직접
+    // 조회할 수 있어야 해서 열어둔다.
     // 문서 생성은 Admin SDK 발급 스크립트만 하고, 클라이언트는 로그인 성공 직후
     // claimed를 false→true로 정확히 한 번만 바꿀 수 있다(이메일/비밀번호는 못 바꿈).
     match /loginCodes/{code} {
       allow get: if true;
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if false;
       allow update: if isSignedIn()
         && resource.data.claimed == false

@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { LoginCode } from '../types/models';
@@ -30,4 +30,24 @@ export async function signInWithLoginCode(code: string): Promise<CodeSignInResul
   }
 
   return { uid: cred.user.uid, hasProfile: !!profile };
+}
+
+export interface LoginCodeSummary {
+  code: string;
+  claimed: boolean;
+  nickname: string | null;
+}
+
+// 관리자용 발급 현황 조회(교사가 몇 명이 코드를 실제로 썼는지 확인하는 용도).
+// list는 규칙에서 관리자만 허용해 코드를 순회로 알아내는 걸 막았다.
+export async function getLoginCodeStats(): Promise<LoginCodeSummary[]> {
+  const snap = await getDocs(collection(db, loginCodesCol));
+  const summaries = await Promise.all(
+    snap.docs.map(async (d) => {
+      const data = d.data() as LoginCode;
+      const nickname = data.claimed && data.uid ? ((await getUserProfile(data.uid))?.nickname ?? null) : null;
+      return { code: d.id, claimed: data.claimed, nickname };
+    })
+  );
+  return summaries.sort((a, b) => a.code.localeCompare(b.code));
 }
