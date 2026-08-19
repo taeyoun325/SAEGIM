@@ -63,7 +63,7 @@ const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] =
 ];
 
 export default function SettingsScreen() {
-  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
+  const { user, profile, signOut, deleteAccount, changePassword, refreshProfile } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
@@ -193,6 +193,41 @@ export default function SettingsScreen() {
       await deleteAccount(password);
     } catch (e) {
       await notify('오류', '비밀번호가 올바르지 않거나 삭제에 실패했어요.');
+    }
+  }
+
+  async function handleChangePassword() {
+    const currentPassword = await prompt({
+      title: '비밀번호 변경',
+      message: '보안을 위해 현재 비밀번호를 입력해주세요.',
+      placeholder: '현재 비밀번호',
+      secure: true,
+      confirmLabel: '다음',
+    });
+    if (!currentPassword) return;
+
+    const newPassword = await prompt({
+      title: '새 비밀번호',
+      message: '6자 이상으로 입력해주세요.',
+      placeholder: '새 비밀번호',
+      secure: true,
+      confirmLabel: '변경하기',
+    });
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      await notify('오류', '비밀번호는 6자 이상이어야 해요.');
+      return;
+    }
+
+    try {
+      await changePassword(currentPassword, newPassword);
+      await notify('변경했어요', '비밀번호가 안전하게 변경됐어요.');
+    } catch (e: any) {
+      if (e?.code === 'auth/wrong-password' || e?.code === 'auth/invalid-credential') {
+        await notify('오류', '현재 비밀번호가 올바르지 않아요.');
+      } else {
+        await notify('오류', '비밀번호 변경에 실패했어요.');
+      }
     }
   }
 
@@ -372,6 +407,9 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.card}>
+        <TouchableOpacity style={styles.rowButton} onPress={handleChangePassword}>
+          <Text style={styles.rowButtonText}>비밀번호 변경</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.rowButton} onPress={signOut}>
           <Text style={styles.rowButtonText}>로그아웃</Text>
         </TouchableOpacity>

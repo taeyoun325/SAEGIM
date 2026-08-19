@@ -10,6 +10,7 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
+  updatePassword,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { createUserProfile, getUserProfile } from '../services/userService';
@@ -34,6 +35,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, nickname: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -111,6 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await sendPasswordResetEmail(auth, email);
   }
 
+  // 비밀번호 변경은 최근 로그인 상태를 요구하는 민감한 작업이라, 계정 삭제와
+  // 마찬가지로 현재 비밀번호로 먼저 재인증한 뒤에 실제 변경을 수행한다.
+  async function changePassword(currentPassword: string, newPassword: string) {
+    const current = auth.currentUser;
+    if (!current || !current.email) return;
+    const credential = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, credential);
+    await updatePassword(current, newPassword);
+  }
+
   async function signOut() {
     await firebaseSignOut(auth);
   }
@@ -153,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn,
         resetPassword,
+        changePassword,
         signOut,
         deleteAccount,
         refreshProfile,
