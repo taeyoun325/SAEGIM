@@ -16,7 +16,14 @@ import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { DailyPrompt, Writing } from '../types/models';
 import { MainTabParamList } from '../navigation/types';
 import { getTodayPrompt } from '../services/promptService';
-import { createWriting, getMyWritingForPrompt, validateLines, updateWritingContent } from '../services/writingService';
+import {
+  createWriting,
+  getMyWritingForPrompt,
+  validateLines,
+  updateWritingContent,
+  updateWritingMood,
+} from '../services/writingService';
+import { MOOD_OPTIONS } from '../constants/moods';
 import { publishWriting, unpublishPost, updatePostContent } from '../services/postService';
 import { recordTodayWriting, adjustPublicPostCount } from '../services/userService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
@@ -50,6 +57,7 @@ export default function TodayScreen() {
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [memoryWriting, setMemoryWriting] = useState<Writing | null>(null);
+  const [mood, setMood] = useState<string | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
   const writeStartLogged = useRef(false);
 
@@ -63,6 +71,7 @@ export default function TodayScreen() {
         setRevealed(await isPromptRevealed(user.uid, p.id));
         const w = await getMyWritingForPrompt(user.uid, p.id);
         setWriting(w);
+        setMood(w?.mood ?? null);
         if (w) {
           setText(w.lines.join('\n'));
         } else {
@@ -119,6 +128,21 @@ export default function TodayScreen() {
     setText(next);
   }
 
+  // 이미 저장된 글이면 기분만 바로 서버에 반영하고, 아직 안 쓴 글이면 로컬에만
+  // 두었다가 저장(handleSave)할 때 함께 만든다.
+  async function handleMoodPress(emoji: string) {
+    const next = mood === emoji ? null : emoji;
+    setMood(next);
+    if (writing) {
+      try {
+        await updateWritingMood(writing.id, next);
+        setWriting({ ...writing, mood: next });
+      } catch (e) {
+        setMood(mood);
+      }
+    }
+  }
+
   async function onRefresh() {
     setRefreshing(true);
     await load();
@@ -156,7 +180,7 @@ export default function TodayScreen() {
       let freezeUsed = false;
 
       if (!currentWriting) {
-        const id = await createWriting(user.uid, prompt.id, lines, 'private', prompt.category);
+        const id = await createWriting(user.uid, prompt.id, lines, 'private', prompt.category, mood);
         const result = await recordTodayWriting(user.uid, todayDateString());
         if (result) {
           freezeUsed = result.freezeUsed;
@@ -172,6 +196,7 @@ export default function TodayScreen() {
           updatedAt: Date.now(),
           visibility: 'private',
           postId: null,
+          mood,
         };
       } else if (JSON.stringify(currentWriting.lines) !== JSON.stringify(cleanLines)) {
         await updateWritingContent(currentWriting.id, lines);
@@ -303,6 +328,21 @@ export default function TodayScreen() {
             </Text>
           )}
 
+          <View style={styles.moodRow}>
+            {MOOD_OPTIONS.map((m) => (
+              <TouchableOpacity
+                key={m.emoji}
+                onPress={() => handleMoodPress(m.emoji)}
+                style={[styles.moodButton, mood === m.emoji && styles.moodButtonSelected]}
+                accessibilityRole="button"
+                accessibilityLabel={`오늘 기분: ${m.label}`}
+                accessibilityState={{ selected: mood === m.emoji }}
+              >
+                <Text style={styles.moodEmoji}>{m.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <TextInput
             style={styles.writeInput}
             placeholder="이 글감을 보고 떠오른 생각을 적어보세요"
@@ -387,6 +427,18 @@ const styles = StyleSheet.create({
   lengthReassurance: { color: colors.textSoft, fontSize: 12, fontStyle: 'italic', marginBottom: spacing.md },
   draftBanner: { color: colors.primary, fontSize: 12, marginBottom: spacing.sm },
   streakRiskBanner: { color: colors.danger, fontSize: 12, fontWeight: '600', marginBottom: spacing.sm },
+  moodRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  moodButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moodButtonSelected: { borderColor: colors.primary, backgroundColor: colors.accentSoft },
+  moodEmoji: { fontSize: 18 },
   writeInput: {
     backgroundColor: colors.card,
     borderRadius: radius.sm,

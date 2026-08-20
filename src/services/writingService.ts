@@ -38,7 +38,8 @@ export async function createWriting(
   promptId: string,
   lines: string[],
   visibility: 'private' | 'public',
-  category?: string
+  category?: string,
+  mood?: string | null
 ): Promise<string> {
   const { valid, reason } = validateLines(lines);
   if (!valid) throw new Error(reason);
@@ -56,6 +57,7 @@ export async function createWriting(
     visibility,
     postId: null,
     ...(category ? { category } : {}),
+    ...(mood ? { mood } : {}),
   } satisfies Omit<Writing, 'id'>);
   stampRateLimit(batch, userId, 'writing');
 
@@ -132,5 +134,9 @@ export async function updateWritingContent(writingId: string, lines: string[]): 
 
 export async function linkWritingToPost(writingId: string, postId: string | null): Promise<void> {
   await updateDoc(doc(db, writingsCol, writingId), { postId });
+}
+
+export async function updateWritingMood(writingId: string, mood: string | null): Promise<void> {
+  await updateDoc(doc(db, writingsCol, writingId), { mood });
 }
 

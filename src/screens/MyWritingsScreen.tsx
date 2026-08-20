@@ -22,6 +22,7 @@ import { syncUserCounts } from '../services/userService';
 import { exportWritings } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { moodLabel } from '../constants/moods';
 
 export default function MyWritingsScreen() {
   const { user, profile, refreshProfile } = useAuth();
@@ -63,6 +64,7 @@ export default function MyWritingsScreen() {
     if (writings.length === 0) return null;
     const monthCounts: Record<string, number> = {};
     const categoryCounts: Record<string, number> = {};
+    const moodCounts: Record<string, number> = {};
     const days = new Set<string>();
     for (const w of writings) {
       const d = timestampToDateString(w.createdAt);
@@ -70,14 +72,17 @@ export default function MyWritingsScreen() {
       const month = d.slice(0, 7);
       monthCounts[month] = (monthCounts[month] ?? 0) + 1;
       if (w.category) categoryCounts[w.category] = (categoryCounts[w.category] ?? 0) + 1;
+      if (w.mood) moodCounts[w.mood] = (moodCounts[w.mood] ?? 0) + 1;
     }
     const topMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0];
     const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0];
+    const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
     return {
       total: writings.length,
       dayCount: days.size,
       topMonth: topMonth ? `${topMonth[0].replace('-', '년 ')}월` : null,
       topCategory: topCategory ? topCategory[0] : null,
+      topMood: topMood ? { emoji: topMood[0], label: moodLabel(topMood[0]) } : null,
     };
   }, [writings]);
 
@@ -237,6 +242,9 @@ export default function MyWritingsScreen() {
                 <Text style={styles.statsLine}>작성한 날짜 수 {stats.dayCount}일</Text>
                 {stats.topMonth && <Text style={styles.statsLine}>가장 많이 쓴 달 {stats.topMonth}</Text>}
                 {stats.topCategory && <Text style={styles.statsLine}>가장 많이 쓴 글감 카테고리 "{stats.topCategory}"</Text>}
+                {stats.topMood && (
+                  <Text style={styles.statsLine}>가장 많이 남긴 기분 {stats.topMood.emoji} {stats.topMood.label}</Text>
+                )}
               </View>
             )}
             <TextInput
@@ -256,7 +264,10 @@ export default function MyWritingsScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.row} onPress={() => openDetail(item)}>
             <View style={styles.rowHeader}>
-              <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
+              <View style={styles.rowDateGroup}>
+                <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
+                {item.mood && <Text style={styles.rowMood}>{item.mood}</Text>}
+              </View>
               <Text style={item.visibility === 'public' ? styles.publicBadge : styles.privateBadge}>
                 {item.visibility === 'public' ? '🌐 공개' : '🔒 비공개'}
               </Text>
@@ -274,7 +285,10 @@ export default function MyWritingsScreen() {
             <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }}>
               {selected && (
                 <>
-                  <Text style={styles.sheetDate}>{formatDisplayDate(timestampToDateString(selected.createdAt))}</Text>
+                  <Text style={styles.sheetDate}>
+                    {formatDisplayDate(timestampToDateString(selected.createdAt))}
+                    {selected.mood ? ` ${selected.mood}` : ''}
+                  </Text>
                   {editing ? (
                     <>
                       <TextInput
@@ -397,7 +411,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   rowHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+  rowDateGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   rowDate: { color: colors.textSoft, fontSize: 12 },
+  rowMood: { fontSize: 13 },
   publicBadge: { color: colors.success, fontSize: 12, fontWeight: '600' },
   privateBadge: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
   rowPreview: { color: colors.text, fontSize: 15, lineHeight: 22 },
