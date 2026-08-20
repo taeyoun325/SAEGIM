@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { DailyPrompt } from '../types/models';
@@ -11,16 +11,13 @@ import { createWriting, validateLines } from '../services/writingService';
 import { syncUserCounts } from '../services/userService';
 import { formatDisplayDate, promptIdToDateString } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
-import { useDialog } from '../context/DialogContext';
 
 // 오늘의 글감 흐름과 완전히 분리된 "연습" 공간이다. 놓친 날의 글감으로도,
 // 그냥 더 쓰고 싶을 때도 부담 없이 써볼 수 있게 한다. 스트릭/보호권 로직은
 // 오늘 새기기 전용이라 여기서는 건드리지 않는다 — 대신 저장 직후 실제 글
 // 개수를 다시 세어(syncUserCounts) "내 새김" 통계에는 바로 반영한다.
 export default function PracticeWritingScreen() {
-  const navigation = useNavigation();
   const { user, profile, refreshProfile } = useAuth();
-  const { notify } = useDialog();
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

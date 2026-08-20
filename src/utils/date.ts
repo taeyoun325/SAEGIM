@@ -22,14 +22,6 @@ export function promptIdToDateString(promptId: string): string {
   return `${promptId.slice(0, 4)}-${promptId.slice(4, 6)}-${promptId.slice(6, 8)}`;
 }
 
-export function isConsecutiveDay(prevDateStr: string, currentDateStr: string): boolean {
-  const prev = new Date(prevDateStr);
-  const current = new Date(currentDateStr);
-  const diffMs = current.getTime() - prev.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-  return diffDays === 1;
-}
-
 export function formatDisplayDate(dateStr: string): string {
   return dateStr.replace(/-/g, '.');
 }
