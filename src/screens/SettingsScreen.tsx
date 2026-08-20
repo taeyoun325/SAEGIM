@@ -138,7 +138,7 @@ export default function SettingsScreen() {
     if (!user) return;
     const keyword = await prompt({
       title: '뮤트할 단어',
-      message: '이 단어가 들어간 글은 피드/캘린더에서 보이지 않아요.',
+      message: '이 단어가 들어간 글/댓글은 보이지 않아요.',
       placeholder: '예: 스포일러',
       confirmLabel: '추가',
     });
@@ -432,7 +432,7 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <View style={styles.categorySection}>
           <Text style={styles.rowButtonText}>키워드 뮤트</Text>
-          <Text style={styles.categoryHint}>이 단어가 들어간 글은 피드/캘린더에서 보이지 않아요. 눌러서 해제해요.</Text>
+          <Text style={styles.categoryHint}>이 단어가 들어간 글/댓글은 보이지 않아요. 눌러서 해제해요.</Text>
           <View style={styles.categoryRow}>
             {(profile?.mutedKeywords ?? []).map((k) => (
               <TouchableOpacity
