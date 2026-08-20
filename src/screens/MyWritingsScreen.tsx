@@ -23,7 +23,7 @@ import { syncUserCounts } from '../services/userService';
 import { exportWritings, exportWritingsJson } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
-import { moodLabel } from '../constants/moods';
+import { moodLabel, MOOD_OPTIONS } from '../constants/moods';
 
 export default function MyWritingsScreen() {
   const { user, profile, refreshProfile } = useAuth();
@@ -32,6 +32,7 @@ export default function MyWritingsScreen() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [moodFilter, setMoodFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<Writing | null>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -60,9 +61,15 @@ export default function MyWritingsScreen() {
     const q = query.trim();
     let list = writings;
     if (favoritesOnly) list = list.filter((w) => w.favorited);
+    if (moodFilter) list = list.filter((w) => w.mood === moodFilter);
     if (q) list = list.filter((w) => w.lines.some((l) => l.includes(q)));
     return list;
-  }, [writings, query, favoritesOnly]);
+  }, [writings, query, favoritesOnly, moodFilter]);
+
+  const usedMoods = useMemo(
+    () => MOOD_OPTIONS.filter((m) => writings.some((w) => w.mood === m.emoji)),
+    [writings]
+  );
 
   async function handleToggleFavorite(writing: Writing) {
     const next = !writing.favorited;
@@ -304,11 +311,40 @@ export default function MyWritingsScreen() {
                 ⭐ 즐겨찾기만
               </Text>
             </TouchableOpacity>
+            {usedMoods.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moodFilterRow}>
+                <TouchableOpacity
+                  style={[styles.moodFilterChip, moodFilter === null && styles.moodFilterChipActive]}
+                  onPress={() => setMoodFilter(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="기분 전체 보기"
+                  aria-selected={moodFilter === null}
+                >
+                  <Text style={[styles.moodFilterChipText, moodFilter === null && styles.moodFilterChipTextActive]}>전체</Text>
+                </TouchableOpacity>
+                {usedMoods.map((m) => (
+                  <TouchableOpacity
+                    key={m.emoji}
+                    style={[styles.moodFilterChip, moodFilter === m.emoji && styles.moodFilterChipActive]}
+                    onPress={() => setMoodFilter((prev) => (prev === m.emoji ? null : m.emoji))}
+                    accessibilityRole="button"
+                    accessibilityLabel={`기분 ${m.label}만 보기`}
+                    aria-selected={moodFilter === m.emoji}
+                  >
+                    <Text style={[styles.moodFilterChipText, moodFilter === m.emoji && styles.moodFilterChipTextActive]}>
+                      {m.emoji} {m.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>{query ? '검색 결과가 없어요.' : '아직 새긴 생각이 없어요.'}</Text>
+            <Text style={styles.emptyText}>
+              {query || favoritesOnly || moodFilter ? '조건에 맞는 글이 없어요.' : '아직 새긴 생각이 없어요.'}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -520,6 +556,17 @@ const styles = StyleSheet.create({
   favoriteFilterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   favoriteFilterChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
   favoriteFilterChipTextActive: { color: '#fff' },
+  moodFilterRow: { gap: spacing.xs, marginBottom: spacing.md },
+  moodFilterChip: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  moodFilterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  moodFilterChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  moodFilterChipTextActive: { color: '#fff' },
   starIcon: { fontSize: 16 },
   row: {
     backgroundColor: colors.card,
