@@ -42,6 +42,8 @@ import { useShare } from '../context/ShareContext';
 
 type TabNav = NativeStackNavigationProp<MainTabParamList>;
 
+const MEMORY_LOOKBACK_YEARS = [1, 2, 3, 4, 5];
+
 export default function TodayScreen() {
   const tabNavigation = useNavigation<TabNav>();
   const { user, profile, refreshProfile } = useAuth();
@@ -56,7 +58,7 @@ export default function TodayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  const [memoryWriting, setMemoryWriting] = useState<Writing | null>(null);
+  const [memories, setMemories] = useState<{ years: number; writing: Writing }[]>([]);
   const [mood, setMood] = useState<string | null>(null);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
   const writeStartLogged = useRef(false);
@@ -88,9 +90,16 @@ export default function TodayScreen() {
           }
         }
       }
-      // 1년 전 오늘 쓴 글이 있으면 회고 카드로 보여준다(없으면 조용히 넘어간다 —
-      // 가입한 지 1년이 안 된 사용자에겐 항상 없는 게 정상이다).
-      setMemoryWriting(await getMyWritingForPrompt(user.uid, yearsAgoPromptId(1)));
+      // 1년 전 오늘부터 최대 5년 전까지, 그해 오늘 쓴 글이 있으면 전부 회고 카드로
+      // 보여준다(오래 써온 사용자일수록 여러 해의 기록이 함께 보인다). 없는 해는
+      // 조용히 넘어간다 — 가입한 지 1년이 안 된 사용자에겐 항상 없는 게 정상이다.
+      const pastYears = await Promise.all(
+        MEMORY_LOOKBACK_YEARS.map(async (years) => {
+          const w = await getMyWritingForPrompt(user.uid, yearsAgoPromptId(years));
+          return w ? { years, writing: w } : null;
+        })
+      );
+      setMemories(pastYears.filter((m): m is { years: number; writing: Writing } => m !== null));
     } catch (e) {
       setError('오늘의 글감을 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
     } finally {
@@ -376,16 +385,16 @@ export default function TodayScreen() {
             <Text style={styles.streak}>🔥 {profile.streakCount}일째 생각을 새겼어요</Text>
           )}
 
-          {memoryWriting && (
-            <View style={styles.memoryCard}>
-              <Text style={styles.memoryLabel}>🗓️ 1년 전 오늘</Text>
+          {memories.map(({ years, writing: memoryWriting }) => (
+            <View key={years} style={styles.memoryCard}>
+              <Text style={styles.memoryLabel}>🗓️ {years}년 전 오늘</Text>
               {memoryWriting.lines.map((line, i) => (
                 <Text key={i} style={styles.memoryLine}>
                   {line}
                 </Text>
               ))}
             </View>
-          )}
+          ))}
         </>
       )}
       <BackgroundMascot source={require('../assets/mascot-today.png')} />
