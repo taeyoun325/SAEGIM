@@ -345,7 +345,7 @@ export default function TodayScreen() {
                 style={[styles.moodButton, mood === m.emoji && styles.moodButtonSelected]}
                 accessibilityRole="button"
                 accessibilityLabel={`오늘 기분: ${m.label}`}
-                accessibilityState={{ selected: mood === m.emoji }}
+                aria-selected={mood === m.emoji}
               >
                 <Text style={styles.moodEmoji}>{m.emoji}</Text>
               </TouchableOpacity>

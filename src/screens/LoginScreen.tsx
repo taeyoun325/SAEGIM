@@ -89,7 +89,13 @@ export default function LoginScreen({ navigation }: Props) {
           onChangeText={(t) => setCode(t.replace(/[^0-9]/g, ''))}
         />
         {error && <Text style={styles.error}>{error}</Text>}
-        <TouchableOpacity style={styles.button} onPress={handleCodeLogin} disabled={loading}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleCodeLogin}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="코드로 로그인"
+        >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>로그인</Text>}
         </TouchableOpacity>
         <TouchableOpacity
@@ -97,6 +103,8 @@ export default function LoginScreen({ navigation }: Props) {
             setMode('email');
             setError(null);
           }}
+          accessibilityRole="button"
+          accessibilityLabel="이메일로 로그인하기"
         >
           <Text style={styles.link}>이메일로 로그인하기</Text>
         </TouchableOpacity>
@@ -125,13 +133,28 @@ export default function LoginScreen({ navigation }: Props) {
         onChangeText={setPassword}
       />
       {error && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotRow}>
+      <TouchableOpacity
+        onPress={handleForgotPassword}
+        style={styles.forgotRow}
+        accessibilityRole="button"
+        accessibilityLabel="비밀번호를 잊으셨나요"
+      >
         <Text style={styles.forgotText}>비밀번호를 잊으셨나요?</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleLogin}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel="로그인"
+      >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>로그인</Text>}
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('SignUp')}
+        accessibilityRole="button"
+        accessibilityLabel="계정이 없으신가요, 회원가입"
+      >
         <Text style={styles.link}>계정이 없으신가요? 회원가입</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -139,6 +162,8 @@ export default function LoginScreen({ navigation }: Props) {
           setMode('code');
           setError(null);
         }}
+        accessibilityRole="button"
+        accessibilityLabel="코드가 있으신가요, 코드로 로그인"
       >
         <Text style={styles.link}>코드가 있으신가요? 코드로 로그인</Text>
       </TouchableOpacity>

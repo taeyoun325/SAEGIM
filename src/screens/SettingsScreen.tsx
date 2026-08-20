@@ -365,6 +365,9 @@ export default function SettingsScreen() {
                     key={opt.label}
                     style={[styles.categoryChip, selected && styles.categoryChipSelected]}
                     onPress={() => selectReminderTime(opt)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`알림 시간 ${opt.label}`}
+                    aria-selected={selected}
                   >
                     <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{opt.label}</Text>
                   </TouchableOpacity>
@@ -405,6 +408,9 @@ export default function SettingsScreen() {
                   key={option.value}
                   style={[styles.themeChip, selected && styles.themeChipSelected]}
                   onPress={() => changeTheme(option.value)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`화면 테마 ${option.label}`}
+                  aria-selected={selected}
                 >
                   <Text style={styles.themeEmoji}>{option.emoji}</Text>
                   <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{option.label}</Text>
@@ -427,6 +433,9 @@ export default function SettingsScreen() {
                   key={option.value}
                   style={[styles.themeChip, selected && styles.themeChipSelected]}
                   onPress={() => setFontScalePreference(option.value)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`글자 크기 ${option.label}`}
+                  aria-selected={selected}
                 >
                   {/* 미리보기 글자는 지금 선택된 배율의 영향을 받으면 안 되므로
                       배율을 자동 적용하는 components/Text가 아니라 RN 원본 Text를 쓴다. */}
@@ -455,6 +464,9 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[styles.themeChip, !profile?.monthlyGoal && styles.themeChipSelected]}
               onPress={() => handleSetMonthlyGoal(null)}
+              accessibilityRole="button"
+              accessibilityLabel="이번 달 목표 안 함"
+              aria-selected={!profile?.monthlyGoal}
             >
               <Text style={[styles.themeChipText, !profile?.monthlyGoal && styles.themeChipTextSelected]}>안 함</Text>
             </TouchableOpacity>
@@ -465,6 +477,9 @@ export default function SettingsScreen() {
                   key={days}
                   style={[styles.themeChip, selected && styles.themeChipSelected]}
                   onPress={() => handleSetMonthlyGoal(days)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`이번 달 목표 ${days}일`}
+                  aria-selected={selected}
                 >
                   <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{days}일</Text>
                 </TouchableOpacity>
@@ -486,6 +501,9 @@ export default function SettingsScreen() {
                   key={c}
                   style={[styles.categoryChip, selected && styles.categoryChipSelected]}
                   onPress={() => togglePreferredCategory(c)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`선호 글감 카테고리 ${c}`}
+                  aria-selected={!!selected}
                 >
                   <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{c}</Text>
                 </TouchableOpacity>
@@ -511,7 +529,12 @@ export default function SettingsScreen() {
                 <Text style={styles.mutedChipText}>{k} ✕</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.addMutedChip} onPress={handleAddMutedKeyword}>
+            <TouchableOpacity
+              style={styles.addMutedChip}
+              onPress={handleAddMutedKeyword}
+              accessibilityRole="button"
+              accessibilityLabel="뮤트 단어 추가"
+            >
               <Text style={styles.addMutedChipText}>+ 단어 추가</Text>
             </TouchableOpacity>
           </View>
@@ -529,35 +552,67 @@ export default function SettingsScreen() {
             : '켜두면 앱을 다시 열 때마다 PIN을 입력해야 해요 — 잠깐 자리를 비워도 비공개 글이 바로 보이지 않아요.'}
         </Text>
         {appLockOn && (
-          <TouchableOpacity onPress={promptForNewPin} style={styles.appLockChangeLink}>
+          <TouchableOpacity
+            onPress={promptForNewPin}
+            style={styles.appLockChangeLink}
+            accessibilityRole="button"
+            accessibilityLabel="PIN 변경"
+          >
             <Text style={styles.appLockChangeLinkText}>PIN 변경</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.card}>
-        <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('BlockedUsers')}>
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={() => navigation.navigate('BlockedUsers')}
+          accessibilityRole="button"
+          accessibilityLabel="차단한 사용자 목록"
+        >
           <Text style={styles.rowButtonText}>차단한 사용자 목록</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('MyReports')}>
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={() => navigation.navigate('MyReports')}
+          accessibilityRole="button"
+          accessibilityLabel="내 신고 내역"
+        >
           <Text style={styles.rowButtonText}>내 신고 내역</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('CommunityGuidelines')}>
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={() => navigation.navigate('CommunityGuidelines')}
+          accessibilityRole="button"
+          accessibilityLabel="커뮤니티 가이드라인"
+        >
           <Text style={styles.rowButtonText}>커뮤니티 가이드라인</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.rowButton, styles.rowButtonNoBorder]} onPress={() => navigation.navigate('PrivacyPolicy')}>
+        <TouchableOpacity
+          style={[styles.rowButton, styles.rowButtonNoBorder]}
+          onPress={() => navigation.navigate('PrivacyPolicy')}
+          accessibilityRole="button"
+          accessibilityLabel="개인정보처리방침"
+        >
           <Text style={styles.rowButtonText}>개인정보처리방침</Text>
         </TouchableOpacity>
       </View>
 
       {admin && (
         <View style={styles.card}>
-          <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('AdminReports')}>
+          <TouchableOpacity
+            style={styles.rowButton}
+            onPress={() => navigation.navigate('AdminReports')}
+            accessibilityRole="button"
+            accessibilityLabel="신고 관리, 관리자"
+          >
             <Text style={styles.adminText}>🛡️ 신고 관리 (관리자)</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.rowButton, styles.rowButtonNoBorder]}
             onPress={() => navigation.navigate('AdminDashboard')}
+            accessibilityRole="button"
+            accessibilityLabel="통계 대시보드, 관리자"
           >
             <Text style={styles.adminText}>📊 통계 대시보드 (관리자)</Text>
           </TouchableOpacity>
@@ -567,23 +622,43 @@ export default function SettingsScreen() {
       {!isGuestAccount && !emailVerified && (
         <View style={styles.verifyBanner}>
           <Text style={styles.verifyBannerText}>이메일 인증이 아직 안 됐어요. 비밀번호를 잊었을 때 재설정 메일을 받으려면 인증이 필요해요.</Text>
-          <TouchableOpacity onPress={handleResendVerification} disabled={resendingVerification}>
+          <TouchableOpacity
+            onPress={handleResendVerification}
+            disabled={resendingVerification}
+            accessibilityRole="button"
+            accessibilityLabel="인증 메일 재전송"
+          >
             <Text style={styles.verifyBannerLink}>{resendingVerification ? '보내는 중...' : '인증 메일 재전송'}</Text>
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.card}>
-        <TouchableOpacity style={styles.rowButton} onPress={handleChangeEmail}>
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={handleChangeEmail}
+          accessibilityRole="button"
+          accessibilityLabel="이메일 변경"
+        >
           <Text style={styles.rowButtonText}>이메일 변경</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.rowButton} onPress={handleChangePassword}>
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={handleChangePassword}
+          accessibilityRole="button"
+          accessibilityLabel="비밀번호 변경"
+        >
           <Text style={styles.rowButtonText}>비밀번호 변경</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.rowButton} onPress={signOut}>
+        <TouchableOpacity style={styles.rowButton} onPress={signOut} accessibilityRole="button" accessibilityLabel="로그아웃">
           <Text style={styles.rowButtonText}>로그아웃</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.rowButton, styles.rowButtonNoBorder]} onPress={confirmDeleteAccount}>
+        <TouchableOpacity
+          style={[styles.rowButton, styles.rowButtonNoBorder]}
+          onPress={confirmDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel="계정 삭제"
+        >
           <Text style={styles.dangerText}>계정 삭제</Text>
         </TouchableOpacity>
       </View>

@@ -400,7 +400,7 @@ export default function PostDetailScreen() {
                   onPress={() => changeCommentSort('oldest')}
                   accessibilityRole="button"
                   accessibilityLabel="오래된순 정렬"
-                  accessibilityState={{ selected: commentSort === 'oldest' }}
+                  aria-selected={commentSort === 'oldest'}
                 >
                   <Text style={[styles.sortText, commentSort === 'oldest' && styles.sortTextActive]}>오래된순</Text>
                 </TouchableOpacity>
@@ -409,7 +409,7 @@ export default function PostDetailScreen() {
                   onPress={() => changeCommentSort('newest')}
                   accessibilityRole="button"
                   accessibilityLabel="최신순 정렬"
-                  accessibilityState={{ selected: commentSort === 'newest' }}
+                  aria-selected={commentSort === 'newest'}
                 >
                   <Text style={[styles.sortText, commentSort === 'newest' && styles.sortTextActive]}>최신순</Text>
                 </TouchableOpacity>

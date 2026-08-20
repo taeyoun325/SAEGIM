@@ -298,7 +298,7 @@ export default function MyWritingsScreen() {
               onPress={() => setFavoritesOnly((v) => !v)}
               accessibilityRole="button"
               accessibilityLabel="즐겨찾기만 보기"
-              accessibilityState={{ selected: favoritesOnly }}
+              aria-selected={favoritesOnly}
             >
               <Text style={[styles.favoriteFilterChipText, favoritesOnly && styles.favoriteFilterChipTextActive]}>
                 ⭐ 즐겨찾기만
@@ -326,7 +326,7 @@ export default function MyWritingsScreen() {
                   onPress={() => handleToggleFavorite(item)}
                   accessibilityRole="button"
                   accessibilityLabel={item.favorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-                  accessibilityState={{ selected: !!item.favorited }}
+                  aria-selected={!!item.favorited}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Text style={styles.starIcon}>{item.favorited ? '⭐' : '☆'}</Text>
