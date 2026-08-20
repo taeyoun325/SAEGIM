@@ -315,7 +315,12 @@ export default function PostDetailScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.notFoundText}>이 글을 찾을 수 없어요.{'\n'}작성자가 지웠거나, 링크가 잘못됐을 수 있어요.</Text>
-        <TouchableOpacity style={styles.notFoundButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.notFoundButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
           <Text style={styles.notFoundButtonText}>뒤로 가기</Text>
         </TouchableOpacity>
       </View>
@@ -369,16 +374,20 @@ export default function PostDetailScreen() {
                 >
                   <Text style={saved ? styles.savedText : styles.actionText}>{saved ? '🔖' : '📑'} 저장</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleShare}>
+                <TouchableOpacity onPress={handleShare} accessibilityRole="button" accessibilityLabel="공유하기">
                   <Text style={styles.actionText}>📤 공유</Text>
                 </TouchableOpacity>
                 {!isOwner && (
-                  <TouchableOpacity onPress={() => navigation.navigate('Report', { targetType: 'post', targetId: post.id })}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Report', { targetType: 'post', targetId: post.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel="게시물 신고하기"
+                  >
                     <Text style={styles.reportText}>신고</Text>
                   </TouchableOpacity>
                 )}
                 {isOwner && (
-                  <TouchableOpacity onPress={handleDeletePost}>
+                  <TouchableOpacity onPress={handleDeletePost} accessibilityRole="button" accessibilityLabel="게시물 삭제하기">
                     <Text style={styles.reportText}>삭제</Text>
                   </TouchableOpacity>
                 )}
@@ -387,11 +396,21 @@ export default function PostDetailScreen() {
             <View style={styles.commentsHeaderRow}>
               <Text style={styles.commentsTitle}>댓글 {visibleComments.length}</Text>
               <View style={styles.sortRow}>
-                <TouchableOpacity onPress={() => changeCommentSort('oldest')}>
+                <TouchableOpacity
+                  onPress={() => changeCommentSort('oldest')}
+                  accessibilityRole="button"
+                  accessibilityLabel="오래된순 정렬"
+                  accessibilityState={{ selected: commentSort === 'oldest' }}
+                >
                   <Text style={[styles.sortText, commentSort === 'oldest' && styles.sortTextActive]}>오래된순</Text>
                 </TouchableOpacity>
                 <Text style={styles.sortDivider}>·</Text>
-                <TouchableOpacity onPress={() => changeCommentSort('newest')}>
+                <TouchableOpacity
+                  onPress={() => changeCommentSort('newest')}
+                  accessibilityRole="button"
+                  accessibilityLabel="최신순 정렬"
+                  accessibilityState={{ selected: commentSort === 'newest' }}
+                >
                   <Text style={[styles.sortText, commentSort === 'newest' && styles.sortTextActive]}>최신순</Text>
                 </TouchableOpacity>
               </View>
@@ -422,10 +441,20 @@ export default function PostDetailScreen() {
                     />
                     <Text style={styles.commentCounter}>{editCommentText.length}/{COMMENT_MAX_LENGTH}</Text>
                     <View style={styles.commentActionsRow}>
-                      <TouchableOpacity onPress={cancelEditComment} disabled={savingEdit}>
+                      <TouchableOpacity
+                        onPress={cancelEditComment}
+                        disabled={savingEdit}
+                        accessibilityRole="button"
+                        accessibilityLabel="댓글 수정 취소"
+                      >
                         <Text style={styles.commentActionText}>취소</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleSaveEditComment(comment)} disabled={savingEdit}>
+                      <TouchableOpacity
+                        onPress={() => handleSaveEditComment(comment)}
+                        disabled={savingEdit}
+                        accessibilityRole="button"
+                        accessibilityLabel="댓글 수정 저장"
+                      >
                         <Text style={styles.commentSaveText}>{savingEdit ? '저장 중...' : '저장'}</Text>
                       </TouchableOpacity>
                     </View>
@@ -448,6 +477,8 @@ export default function PostDetailScreen() {
                       {!isReply && (
                         <TouchableOpacity
                           onPress={() => setReplyingTo({ commentId: comment.id, authorId: comment.userId, nickname: comment.authorNickname })}
+                          accessibilityRole="button"
+                          accessibilityLabel="답글 남기기"
                         >
                           <Text style={styles.commentActionText}>답글</Text>
                         </TouchableOpacity>
@@ -459,15 +490,27 @@ export default function PostDetailScreen() {
               {!isEditing && (
                 comment.userId === user?.uid ? (
                   <View style={styles.ownCommentActions}>
-                    <TouchableOpacity onPress={() => startEditComment(comment)}>
+                    <TouchableOpacity
+                      onPress={() => startEditComment(comment)}
+                      accessibilityRole="button"
+                      accessibilityLabel="댓글 수정"
+                    >
                       <Text style={styles.deleteText}>수정</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteComment(comment)}>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteComment(comment)}
+                      accessibilityRole="button"
+                      accessibilityLabel="댓글 삭제"
+                    >
                       <Text style={styles.deleteText}>삭제</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity onPress={() => navigation.navigate('Report', { targetType: 'comment', targetId: comment.id })}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Report', { targetType: 'comment', targetId: comment.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel="댓글 신고하기"
+                  >
                     <Text style={styles.deleteText}>신고</Text>
                   </TouchableOpacity>
                 )
@@ -479,7 +522,11 @@ export default function PostDetailScreen() {
       {replyingTo && (
         <View style={styles.replyBanner}>
           <Text style={styles.replyBannerText}>{replyingTo.nickname}님에게 답글 남기는 중</Text>
-          <TouchableOpacity onPress={() => setReplyingTo(null)}>
+          <TouchableOpacity
+            onPress={() => setReplyingTo(null)}
+            accessibilityRole="button"
+            accessibilityLabel="답글 작성 취소"
+          >
             <Text style={styles.replyBannerCancel}>취소</Text>
           </TouchableOpacity>
         </View>
@@ -497,7 +544,12 @@ export default function PostDetailScreen() {
             returnKeyType="send"
             onSubmitEditing={handleAddComment}
           />
-          <TouchableOpacity onPress={handleAddComment} disabled={posting}>
+          <TouchableOpacity
+            onPress={handleAddComment}
+            disabled={posting}
+            accessibilityRole="button"
+            accessibilityLabel={replyingTo ? '답글 등록' : '댓글 등록'}
+          >
             <Text style={styles.sendText}>등록</Text>
           </TouchableOpacity>
         </View>
