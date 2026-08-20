@@ -186,7 +186,13 @@ export default function AdminDashboardScreen() {
         </>
       )}
 
-      <TouchableOpacity style={styles.refreshButton} onPress={load} disabled={loading}>
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={load}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel="통계 새로고침"
+      >
         <Text style={styles.refreshButtonText}>새로고침</Text>
       </TouchableOpacity>
 
@@ -213,7 +219,13 @@ export default function AdminDashboardScreen() {
           ))}
         </View>
       )}
-      <TouchableOpacity style={styles.refreshButton} onPress={loadCodeStats} disabled={loadingCodes}>
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={loadCodeStats}
+        disabled={loadingCodes}
+        accessibilityRole="button"
+        accessibilityLabel={codeStats ? '코드 현황 새로고침' : '코드 현황 보기'}
+      >
         {loadingCodes ? (
           <ActivityIndicator color={colors.primary} />
         ) : (
@@ -244,12 +256,21 @@ export default function AdminDashboardScreen() {
             key={c}
             style={[styles.categoryChip, newCategory === c && styles.categoryChipSelected]}
             onPress={() => setNewCategory(c)}
+            accessibilityRole="button"
+            accessibilityLabel={`글감 카테고리 ${c}`}
+            aria-selected={newCategory === c}
           >
             <Text style={[styles.categoryChipText, newCategory === c && styles.categoryChipTextSelected]}>{c}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <TouchableOpacity style={styles.addButton} onPress={handleAddPrompt} disabled={savingPrompt}>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={handleAddPrompt}
+        disabled={savingPrompt}
+        accessibilityRole="button"
+        accessibilityLabel="글감 추가"
+      >
         {savingPrompt ? <ActivityIndicator color="#fff" /> : <Text style={styles.addButtonText}>글감 추가</Text>}
       </TouchableOpacity>
     </ScrollView>

@@ -144,6 +144,8 @@ export default function AdminReportsScreen() {
                 style={[styles.button, styles.buttonOutline]}
                 onPress={() => handleDismiss(item)}
                 disabled={busyId === item.id}
+                accessibilityRole="button"
+                accessibilityLabel="문제 없음, 신고 기각"
               >
                 <Text style={styles.buttonOutlineText}>문제 없음</Text>
               </TouchableOpacity>
@@ -151,6 +153,8 @@ export default function AdminReportsScreen() {
                 style={[styles.button, styles.buttonDanger]}
                 onPress={() => handleDelete(item)}
                 disabled={busyId === item.id || deleted}
+                accessibilityRole="button"
+                accessibilityLabel="신고된 콘텐츠 삭제"
               >
                 {busyId === item.id ? (
                   <ActivityIndicator color="#fff" />
