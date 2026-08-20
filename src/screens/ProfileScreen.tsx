@@ -147,8 +147,13 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.header}>
-            {showCharacterExperiment && profile && (
-              <CharacterGrowthCard progress={getCharacterProgress(profile)} />
+            {showCharacterExperiment && profile && user && (
+              <CharacterGrowthCard
+                progress={getCharacterProgress(profile)}
+                profile={profile}
+                uid={user.uid}
+                onChange={refreshProfile}
+              />
             )}
             <View style={styles.identityRow}>
               <TouchableOpacity

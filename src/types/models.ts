@@ -80,6 +80,10 @@ export interface UserProfile {
   mutedKeywords?: string[]; // 이 단어가 들어간 글을 피드/캘린더에서 보이지 않게 한다
   mutedNotificationTypes?: NotificationType[]; // 이 종류의 알림은 아예 만들지 않는다(알림 피로 방지)
   monthlyGoal?: number | null; // 이번 달에 새기고 싶은 날짜 수(선택). 설정하지 않으면 진행률을 보여주지 않는다.
+  // 개발자 서버 모드 전용 캐릭터 육성 실험 필드(관리자 계정에서만 쓰임).
+  characterAffection?: number; // 먹이 주기로 쌓이는 애정도
+  characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD)
+  characterEquippedAccessoryId?: string | null;
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

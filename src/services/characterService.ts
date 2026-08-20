@@ -1,5 +1,8 @@
 import { CHARACTER_STAGES, CharacterStageDef } from '../constants/characterGrowth';
+import { CHARACTER_ACCESSORIES, CharacterAccessoryDef } from '../constants/characterAccessories';
 import { UserProfile } from '../types/models';
+import { updateUserProfile } from './userService';
+import { todayDateString } from '../utils/date';
 
 export interface CharacterProgress {
   stage: CharacterStageDef;
@@ -28,4 +31,32 @@ export function getCharacterProgress(profile: Pick<UserProfile, 'writingCount'>)
     : 1;
 
   return { stage, nextStage, writingCount, progressToNext: Math.min(1, Math.max(0, progressToNext)) };
+}
+
+// 먹이 주기: 글쓰기와 별개로 매일 한 번 캐릭터와 상호작용하는 요소(Finch류 앱 참고).
+// 성장 자체(단계)는 여전히 새김 개수로만 결정되고, 애정도는 순수히 꾸미기 아이템
+// 해금용 보조 지표라 성장 로직과 섞이지 않는다.
+export function canFeedToday(profile: Pick<UserProfile, 'characterLastFedDate'>): boolean {
+  return profile.characterLastFedDate !== todayDateString();
+}
+
+export async function feedCharacter(
+  uid: string,
+  profile: Pick<UserProfile, 'characterAffection' | 'characterLastFedDate'>
+): Promise<void> {
+  if (!canFeedToday(profile)) return;
+  const nextAffection = (profile.characterAffection ?? 0) + 1;
+  await updateUserProfile(uid, { characterAffection: nextAffection, characterLastFedDate: todayDateString() });
+}
+
+export function getUnlockedAccessories(affection: number): CharacterAccessoryDef[] {
+  return CHARACTER_ACCESSORIES.filter((a) => affection >= a.minAffection);
+}
+
+export function getNextLockedAccessory(affection: number): CharacterAccessoryDef | null {
+  return CHARACTER_ACCESSORIES.find((a) => affection < a.minAffection) ?? null;
+}
+
+export async function equipAccessory(uid: string, accessoryId: string): Promise<void> {
+  await updateUserProfile(uid, { characterEquippedAccessoryId: accessoryId });
 }
