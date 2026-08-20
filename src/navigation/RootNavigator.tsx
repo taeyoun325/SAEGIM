@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { colors, getIsDarkMode } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { isAppLockEnabled } from '../services/appLockService';
+import AppLockScreen from '../components/AppLockScreen';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
 import PostDetailScreen from '../screens/PostDetailScreen';
@@ -78,13 +80,32 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 export default function RootNavigator() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
+  const [appLocked, setAppLocked] = useState(false);
+  const [lockChecked, setLockChecked] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setSplashDone(true), MIN_SPLASH_MS);
     return () => clearTimeout(timer);
   }, []);
+
+  // 콜드 스타트마다(로그인 상태가 될 때마다) 앱 잠금이 켜져 있는지 딱 한 번만 확인한다.
+  // profile은 글쓰기/좋아요 등 온갖 동작 후 refreshProfile()로 계속 새 참조를 받으므로,
+  // lockChecked 가드 없이 profile을 의존성에 넣으면 한 번 풀었던 잠금이 프로필이
+  // 갱신될 때마다 다시 걸려버린다. 로그아웃하면 다음 로그인 때 다시 확인해야 하므로
+  // lockChecked도 함께 초기화한다.
+  useEffect(() => {
+    if (user && profile && !lockChecked) {
+      isAppLockEnabled().then((enabled) => {
+        setAppLocked(enabled);
+        setLockChecked(true);
+      });
+    } else if (!user && lockChecked) {
+      setLockChecked(false);
+      setAppLocked(false);
+    }
+  }, [user, profile, lockChecked]);
 
   if (loading || !splashDone) {
     return <SplashScreen />;
@@ -99,6 +120,10 @@ export default function RootNavigator() {
         <AuthNavigator />
       ) : !profile ? (
         <ProfileSetupScreen />
+      ) : !lockChecked ? (
+        <SplashScreen />
+      ) : appLocked ? (
+        <AppLockScreen onUnlock={() => setAppLocked(false)} onLogout={signOut} />
       ) : (
         <Stack.Navigator>
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />

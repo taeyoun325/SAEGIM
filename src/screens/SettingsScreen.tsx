@@ -17,6 +17,7 @@ import {
   ReminderTime,
 } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
+import { isAppLockEnabled, setAppLockPin, disableAppLock, isValidPin } from '../services/appLockService';
 import {
   updateUserProfile,
   muteKeyword,
@@ -85,10 +86,12 @@ export default function SettingsScreen() {
   const [themePreference, setThemePreference] = useState<ThemePreference>('system');
   const { preference: fontScalePreference, setPreference: setFontScalePreference } = useFontScale();
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [appLockOn, setAppLockOn] = useState(false);
   const isGuestAccount = !!user?.email?.endsWith(GUEST_EMAIL_DOMAIN);
 
   useEffect(() => {
     loadThemePreference().then(setThemePreference);
+    isAppLockEnabled().then(setAppLockOn);
   }, []);
 
   // 메일함에서 인증 링크를 누르고 이 화면으로 돌아왔을 때 배너가 알아서 사라지도록,
@@ -139,6 +142,35 @@ export default function SettingsScreen() {
     if (!user) return;
     await updateUserProfile(user.uid, { monthlyGoal: value });
     await refreshProfile();
+  }
+
+  // PIN을 설정하거나 바꿀 때 쓰는 공용 흐름. 로그인 자체는 그대로 유지한 채
+  // 기기 로컬에만 저장되는 값이라 실패해도 계정에 영향이 없다.
+  async function promptForNewPin(): Promise<void> {
+    const pin = await prompt({
+      title: appLockOn ? 'PIN 변경' : '앱 잠금 PIN 설정',
+      message: '앱을 다시 열 때마다 입력할 숫자 4~6자리를 정해주세요.',
+      placeholder: '숫자 4~6자리',
+      confirmLabel: '설정',
+      secure: true,
+    });
+    if (pin === null) return;
+    if (!isValidPin(pin)) {
+      await notify('오류', 'PIN은 숫자 4~6자리로 입력해주세요.');
+      return;
+    }
+    await setAppLockPin(pin);
+    setAppLockOn(true);
+    await notify('설정했어요', '다음에 앱을 열 때부터 이 PIN을 입력해야 해요.');
+  }
+
+  async function handleToggleAppLock(next: boolean) {
+    if (next) {
+      await promptForNewPin();
+    } else {
+      await disableAppLock();
+      setAppLockOn(false);
+    }
   }
 
   async function handleAddMutedKeyword() {
@@ -487,6 +519,23 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <View style={styles.reminderRow}>
+          <Text style={styles.rowButtonText}>앱 잠금 (PIN)</Text>
+          <Switch value={appLockOn} onValueChange={handleToggleAppLock} />
+        </View>
+        <Text style={styles.categoryHint}>
+          {appLockOn
+            ? '앱을 다시 열 때마다 PIN을 입력해야 해요. PIN을 잊으면 로그아웃 후 다시 로그인하면 돼요.'
+            : '켜두면 앱을 다시 열 때마다 PIN을 입력해야 해요 — 잠깐 자리를 비워도 비공개 글이 바로 보이지 않아요.'}
+        </Text>
+        {appLockOn && (
+          <TouchableOpacity onPress={promptForNewPin} style={styles.appLockChangeLink}>
+            <Text style={styles.appLockChangeLinkText}>PIN 변경</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.card}>
         <TouchableOpacity style={styles.rowButton} onPress={() => navigation.navigate('BlockedUsers')}>
           <Text style={styles.rowButtonText}>차단한 사용자 목록</Text>
         </TouchableOpacity>
@@ -557,6 +606,8 @@ const styles = StyleSheet.create({
   },
   reminderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md },
   reminderTimeSection: { paddingBottom: spacing.md },
+  appLockChangeLink: { marginTop: spacing.sm },
+  appLockChangeLinkText: { color: colors.primary, fontWeight: '600', fontSize: 13 },
   rowButton: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   rowButtonNoBorder: { borderBottomWidth: 0 },
   rowButtonText: { color: colors.text, fontSize: 15 },
