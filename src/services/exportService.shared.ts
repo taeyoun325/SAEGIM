@@ -23,3 +23,20 @@ export function buildExportText(writings: Writing[]): string {
 
   return `${header}\n${body}\n`;
 }
+
+// 다른 저널링 앱으로 옮기거나 스크립트로 다시 읽어들이기 쉽도록 구조화된 형식도 함께
+// 제공한다(텍스트 내보내기는 읽기 좋지만 프로그램으로 재조립하기는 어렵다).
+// uid/문서 id 등 내부 식별자는 다른 서비스로 옮길 때 의미가 없어 제외하고,
+// 실제 콘텐츠와 메타데이터(기분, 즐겨찾기, 공개 여부, 글감 카테고리)만 담는다.
+export function buildExportJson(writings: Writing[]): string {
+  const sorted = [...writings].sort((a, b) => a.createdAt - b.createdAt);
+  const entries = sorted.map((w) => ({
+    date: timestampToDateString(w.createdAt),
+    lines: w.lines,
+    visibility: w.visibility,
+    category: w.category ?? null,
+    mood: w.mood ?? null,
+    favorited: !!w.favorited,
+  }));
+  return JSON.stringify({ app: '새김', exportedAt: new Date().toISOString(), count: entries.length, entries }, null, 2);
+}

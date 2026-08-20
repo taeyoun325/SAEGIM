@@ -20,7 +20,7 @@ import {
 } from '../services/writingService';
 import { deleteWritingCompletely, updatePostContent } from '../services/postService';
 import { syncUserCounts } from '../services/userService';
-import { exportWritings } from '../services/exportService';
+import { exportWritings, exportWritingsJson } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
 import { moodLabel } from '../constants/moods';
@@ -150,6 +150,20 @@ export default function MyWritingsScreen() {
     }
   }
 
+  // 다른 저널링 앱으로 옮기거나 스스로 백업을 다뤄볼 사용자를 위한 구조화된 형식.
+  // 텍스트 내보내기와 달리 프로그램으로 다시 읽어들이기 좋다.
+  async function handleExportJson() {
+    if (writings.length === 0) {
+      await notify('내보낼 글이 없어요', '아직 새긴 생각이 없어요.');
+      return;
+    }
+    try {
+      await exportWritingsJson(writings);
+    } catch (e) {
+      await notify('오류', '내보내기에 실패했어요.');
+    }
+  }
+
   async function handleDelete() {
     if (!selected || !user) return;
     const isPrivate = selected.visibility !== 'public';
@@ -247,9 +261,17 @@ export default function MyWritingsScreen() {
                   onPress={handleExport}
                   style={styles.exportButton}
                   accessibilityRole="button"
-                  accessibilityLabel="내 새김 내보내기"
+                  accessibilityLabel="내 새김 텍스트로 내보내기"
                 >
-                  <Text style={styles.exportButtonText}>📤 내보내기</Text>
+                  <Text style={styles.exportButtonText}>📤 텍스트</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleExportJson}
+                  style={styles.exportButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="내 새김 JSON으로 내보내기"
+                >
+                  <Text style={styles.exportButtonText}>🧩 JSON</Text>
                 </TouchableOpacity>
               </View>
             </View>
