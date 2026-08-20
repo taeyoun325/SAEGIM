@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { DailyPrompt } from '../types/models';
-import { dateStringToPromptId, todayDateString } from '../utils/date';
+import { dateStringToPromptId, todayDateString, daysAgoDateString } from '../utils/date';
 import { PROMPT_POOL } from '../constants/promptPool';
 
 const promptsCol = 'prompts';
@@ -40,6 +40,13 @@ export async function getPromptById(id: string): Promise<DailyPrompt | null> {
 
 export async function getTodayPrompt(): Promise<DailyPrompt | null> {
   return getPromptById(dateStringToPromptId(todayDateString()));
+}
+
+// 오늘의 글감 흐름과 별개로, 지난 글감 중 하나를 무작위로 골라 다시 써볼 수 있게 한다
+// ("연습 새기기"). promptId가 날짜만으로 결정되므로 과거 아무 날짜나 안전하게 조회할 수 있다.
+export async function getRandomPastPrompt(daysBack: number = 60): Promise<DailyPrompt | null> {
+  const offset = 1 + Math.floor(Math.random() * daysBack); // 1~daysBack일 전 (오늘 제외)
+  return getPromptById(dateStringToPromptId(daysAgoDateString(offset)));
 }
 
 // 관리자 전용: 특정 날짜의 글감을 직접 지정한다(firestore.rules에서 isAdmin()만 쓰기 허용).

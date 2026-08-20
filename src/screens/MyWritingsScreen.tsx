@@ -2,7 +2,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
@@ -24,10 +26,14 @@ import { exportWritings, exportWritingsJson } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString, recentDateStrings } from '../utils/date';
 
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 import { moodLabel, MOOD_OPTIONS } from '../constants/moods';
 
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
 export default function MyWritingsScreen() {
+  const navigation = useNavigation<Nav>();
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const [writings, setWritings] = useState<Writing[]>([]);
@@ -299,6 +305,14 @@ export default function MyWritingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            <TouchableOpacity
+              style={styles.practiceButton}
+              onPress={() => navigation.navigate('PracticeWriting')}
+              accessibilityRole="button"
+              accessibilityLabel="지난 글감으로 다시 써보기"
+            >
+              <Text style={styles.practiceButtonText}>🔁 지난 글감으로 다시 써보기</Text>
+            </TouchableOpacity>
             {writings.length > 0 && (
               <View style={styles.weekCard}>
                 <Text style={styles.weekTitle}>이번 주 새김 {weekly.count}/7일</Text>
@@ -568,6 +582,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   exportButtonText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
+  practiceButton: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  practiceButtonText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   weekCard: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.md },
   weekTitle: { color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },

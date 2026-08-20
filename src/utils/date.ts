@@ -53,6 +53,11 @@ export function recentDateStrings(days: number): string[] {
   return result;
 }
 
+// N일 전(오늘=0)의 날짜 문자열을 서비스 시간대 기준으로 구한다.
+export function daysAgoDateString(n: number): string {
+  return timestampToDateString(Date.now() - n * 24 * 60 * 60 * 1000);
+}
+
 // N년 전 오늘(같은 월/일)의 promptId를 구한다. "1년 전 오늘" 회고 카드에 쓴다.
 // 2/29처럼 대상 연도에 없는 날짜는 Date가 자동으로 다음 날로 보정한다(연 1회, 4년에 한 번뿐인
 // 아주 드문 경우라 별도 처리를 두지 않는다).
