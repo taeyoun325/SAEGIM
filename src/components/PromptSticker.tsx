@@ -3,6 +3,7 @@ import { Animated, StyleSheet, TouchableWithoutFeedback, View, Platform } from '
 import Mascot from './Mascot';
 import Text from './Text';
 import { colors, radius, spacing } from '../constants/theme';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 interface Props {
   onReveal: () => void;
@@ -14,8 +15,15 @@ export default function PromptSticker({ onReveal }: Props) {
   const translateY = useRef(new Animated.Value(0)).current;
   const rotate = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
 
   function handlePress() {
+    // "동작 줄이기"를 켠 사용자에게는 옆으로 튕겨나가는 큰 움직임 대신
+    // 자리 이동 없이 옅어지기만 하도록 한다(2.3.3 Animation from Interactions).
+    if (reducedMotion) {
+      Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: Platform.OS !== 'web' }).start(() => onReveal());
+      return;
+    }
     Animated.parallel([
       Animated.timing(translateX, { toValue: 280, duration: 380, useNativeDriver: Platform.OS !== 'web' }),
       Animated.timing(translateY, { toValue: -50, duration: 380, useNativeDriver: Platform.OS !== 'web' }),
