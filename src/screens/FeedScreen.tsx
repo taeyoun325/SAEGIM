@@ -120,13 +120,30 @@ export default function FeedScreen() {
           <Text style={styles.headerTitle}>{prompt.title}</Text>
           {prompt.category && <Text style={styles.categoryChip}>{prompt.category}</Text>}
           <View style={styles.sortRow}>
-            <TouchableOpacity onPress={() => changeSort('latest')} style={[styles.sortChip, sort === 'latest' && styles.sortChipActive]}>
+            <TouchableOpacity
+              onPress={() => changeSort('latest')}
+              style={[styles.sortChip, sort === 'latest' && styles.sortChipActive]}
+              accessibilityRole="button"
+              accessibilityLabel="최신순 정렬"
+              aria-selected={sort === 'latest'}
+            >
               <Text style={[styles.sortText, sort === 'latest' && styles.sortTextActive]}>최신순</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => changeSort('popular')} style={[styles.sortChip, sort === 'popular' && styles.sortChipActive]}>
+            <TouchableOpacity
+              onPress={() => changeSort('popular')}
+              style={[styles.sortChip, sort === 'popular' && styles.sortChipActive]}
+              accessibilityRole="button"
+              accessibilityLabel="인기순 정렬"
+              aria-selected={sort === 'popular'}
+            >
               <Text style={[styles.sortText, sort === 'popular' && styles.sortTextActive]}>인기순</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleRandomBrowse} style={styles.diceButton}>
+            <TouchableOpacity
+              onPress={handleRandomBrowse}
+              style={styles.diceButton}
+              accessibilityRole="button"
+              accessibilityLabel="랜덤 둘러보기"
+            >
               <Text style={styles.diceButtonText}>🎲 랜덤 둘러보기</Text>
             </TouchableOpacity>
           </View>
@@ -136,7 +153,12 @@ export default function FeedScreen() {
       {error && (
         <View style={styles.errorRow}>
           <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => load(sort)}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => load(sort)}
+            accessibilityRole="button"
+            accessibilityLabel="다시 시도"
+          >
             <Text style={styles.retryButtonText}>다시 시도</Text>
           </TouchableOpacity>
         </View>
@@ -151,7 +173,12 @@ export default function FeedScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>아직 새겨진 생각이 없어요.{'\n'}오늘의 글감으로 첫 생각을 새겨보세요.</Text>
-            <TouchableOpacity style={styles.emptyCta} onPress={() => tabNavigation.navigate('Today')}>
+            <TouchableOpacity
+              style={styles.emptyCta}
+              onPress={() => tabNavigation.navigate('Today')}
+              accessibilityRole="button"
+              accessibilityLabel="오늘의 글감 보러 가기"
+            >
               <Text style={styles.emptyCtaText}>오늘의 글감 보러 가기</Text>
             </TouchableOpacity>
           </View>

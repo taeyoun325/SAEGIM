@@ -333,7 +333,11 @@ export default function MyWritingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <TouchableOpacity onPress={() => openDetail(item)}>
+            <TouchableOpacity
+              onPress={() => openDetail(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${formatDisplayDate(timestampToDateString(item.createdAt))} 글 상세 보기: ${item.lines.join(' ')}`}
+            >
               <Text style={styles.rowPreview} numberOfLines={2}>
                 {item.lines.join(' · ')}
               </Text>
@@ -364,10 +368,22 @@ export default function MyWritingsScreen() {
                       />
                       <Text style={styles.counter}>{editText.length}/{WRITING_TOTAL_MAX_LENGTH}</Text>
                       <View style={styles.actionsRow}>
-                        <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setEditing(false)} disabled={busy}>
+                        <TouchableOpacity
+                          style={[styles.button, styles.buttonOutline]}
+                          onPress={() => setEditing(false)}
+                          disabled={busy}
+                          accessibilityRole="button"
+                          accessibilityLabel="수정 취소"
+                        >
                           <Text style={styles.buttonOutlineText}>취소</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.button} onPress={handleSaveEdit} disabled={busy}>
+                        <TouchableOpacity
+                          style={styles.button}
+                          onPress={handleSaveEdit}
+                          disabled={busy}
+                          accessibilityRole="button"
+                          accessibilityLabel="수정 저장"
+                        >
                           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>저장</Text>}
                         </TouchableOpacity>
                       </View>
@@ -380,10 +396,22 @@ export default function MyWritingsScreen() {
                         ))}
                       </View>
                       <View style={styles.actionsRow}>
-                        <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setEditing(true)} disabled={busy}>
+                        <TouchableOpacity
+                          style={[styles.button, styles.buttonOutline]}
+                          onPress={() => setEditing(true)}
+                          disabled={busy}
+                          accessibilityRole="button"
+                          accessibilityLabel="글 수정"
+                        >
                           <Text style={styles.buttonOutlineText}>수정</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, styles.buttonDanger]} onPress={handleDelete} disabled={busy}>
+                        <TouchableOpacity
+                          style={[styles.button, styles.buttonDanger]}
+                          onPress={handleDelete}
+                          disabled={busy}
+                          accessibilityRole="button"
+                          accessibilityLabel="글 삭제"
+                        >
                           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>삭제</Text>}
                         </TouchableOpacity>
                       </View>
@@ -391,7 +419,12 @@ export default function MyWritingsScreen() {
                   )}
                 </>
               )}
-              <TouchableOpacity style={styles.closeButton} onPress={closeDetail}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={closeDetail}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
                 <Text style={styles.closeButtonText}>닫기</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -419,7 +452,12 @@ export default function MyWritingsScreen() {
                         <Text style={styles.rowPreview} numberOfLines={1}>{w.lines.join(' · ')}</Text>
                         <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(w.createdAt))} · {daysLeft(w)}일 후 완전 삭제</Text>
                       </View>
-                      <TouchableOpacity onPress={() => handleRestore(w)} disabled={busy}>
+                      <TouchableOpacity
+                        onPress={() => handleRestore(w)}
+                        disabled={busy}
+                        accessibilityRole="button"
+                        accessibilityLabel="글 복구"
+                      >
                         <Text style={styles.restoreText}>복구</Text>
                       </TouchableOpacity>
                     </View>
@@ -427,7 +465,12 @@ export default function MyWritingsScreen() {
                 )}
               </ScrollView>
             )}
-            <TouchableOpacity style={styles.closeButton} onPress={() => setTrashVisible(false)}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setTrashVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="휴지통 닫기"
+            >
               <Text style={styles.closeButtonText}>닫기</Text>
             </TouchableOpacity>
           </View>
