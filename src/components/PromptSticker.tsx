@@ -38,7 +38,7 @@ export default function PromptSticker({ onReveal }: Props) {
     <Animated.View
       style={[styles.sticker, { transform: [{ translateX }, { translateY }, { rotate: rotateDeg }], opacity }]}
     >
-      <TouchableWithoutFeedback onPress={handlePress}>
+      <TouchableWithoutFeedback onPress={handlePress} accessibilityRole="button" accessibilityLabel="오늘의 글감 보기">
         <View style={styles.stickerInner}>
           <Mascot size={88} />
           <Text style={styles.hint}>톡 눌러서{'\n'}오늘의 글감 보기</Text>
