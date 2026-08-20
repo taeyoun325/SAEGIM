@@ -90,10 +90,20 @@ export default function SignUpScreen({ navigation }: Props) {
         </View>
       )}
       {error && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSignUp}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel="회원가입"
+      >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>회원가입</Text>}
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        accessibilityRole="button"
+        accessibilityLabel="이미 계정이 있으신가요, 로그인"
+      >
         <Text style={styles.link}>이미 계정이 있으신가요? 로그인</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>

@@ -244,7 +244,12 @@ export default function CalendarScreen() {
                   )}
                 </>
               )}
-              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={closeModal}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
                 <Text style={styles.closeButtonText}>닫기</Text>
               </TouchableOpacity>
             </ScrollView>

@@ -72,7 +72,12 @@ export default function OtherProfileScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.notFoundText}>이 사용자를 찾을 수 없어요.{'\n'}탈퇴했거나, 링크가 잘못됐을 수 있어요.</Text>
-        <TouchableOpacity style={styles.notFoundButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.notFoundButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로 가기"
+        >
           <Text style={styles.notFoundButtonText}>뒤로 가기</Text>
         </TouchableOpacity>
       </View>

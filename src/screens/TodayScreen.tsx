@@ -296,7 +296,12 @@ export default function TodayScreen() {
             {error ?? '오늘의 글감을 준비하고 있어요.\n잠시 후 다시 확인해주세요.'}
           </Text>
           {error && (
-            <TouchableOpacity style={styles.retryButton} onPress={load}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={load}
+              accessibilityRole="button"
+              accessibilityLabel="다시 시도"
+            >
               <Text style={styles.retryButtonText}>다시 시도</Text>
             </TouchableOpacity>
           )}
@@ -388,7 +393,12 @@ export default function TodayScreen() {
           </View>
 
           {hasWritten && writing?.visibility === 'public' && (
-            <TouchableOpacity onPress={handleUnpublish} disabled={saving}>
+            <TouchableOpacity
+              onPress={handleUnpublish}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="비공개로 전환하기"
+            >
               <Text style={styles.unpublishLink}>비공개로 전환하기</Text>
             </TouchableOpacity>
           )}

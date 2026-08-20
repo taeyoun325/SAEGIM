@@ -227,10 +227,20 @@ export default function ProfileScreen() {
             )}
 
             <View style={styles.linkRow}>
-              <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('MyWritings')}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => navigation.navigate('MyWritings')}
+                accessibilityRole="button"
+                accessibilityLabel="내 새김 관리"
+              >
                 <Text style={styles.linkButtonText}>📖 내 새김 관리</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('SavedPosts')}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => navigation.navigate('SavedPosts')}
+                accessibilityRole="button"
+                accessibilityLabel="저장한 글"
+              >
                 <Text style={styles.linkButtonText}>🔖 저장한 글</Text>
               </TouchableOpacity>
             </View>
