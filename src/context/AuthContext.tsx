@@ -10,6 +10,7 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updatePassword,
   verifyBeforeUpdateEmail,
 } from 'firebase/auth';
@@ -46,6 +47,9 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>;
   unreadNotifications: number;
   refreshUnreadNotifications: () => Promise<void>;
+  emailVerified: boolean;
+  resendVerificationEmail: () => Promise<void>;
+  refreshEmailVerified: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -55,10 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [emailVerified, setEmailVerified] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+      setEmailVerified(firebaseUser?.emailVerified ?? true);
       if (firebaseUser) {
         const p = await getUserProfile(firebaseUser.uid);
         setProfile(p);
@@ -108,6 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const p = await createUserProfile(cred.user.uid, nickname.trim());
     setProfile(p);
+
+    // 가입 직후 인증 메일을 보낸다. 실패해도(메일 서버 일시 오류 등) 가입 자체는
+    // 막지 않는다 — 설정 화면에서 언제든 다시 보낼 수 있다.
+    sendEmailVerification(cred.user).catch(() => {});
   }
 
   async function signIn(email: string, password: string) {
@@ -195,6 +205,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(p);
   }
 
+  async function resendVerificationEmail() {
+    const current = auth.currentUser;
+    if (!current) return;
+    await sendEmailVerification(current);
+  }
+
+  // emailVerified는 로그인 시점 토큰에 박힌 값이라, 메일함에서 링크를 누르고
+  // 이 화면으로 돌아와도 저절로 갱신되지 않는다. reload()로 최신 상태를 다시
+  // 받아와야 한다(설정 화면이 포커스될 때 호출).
+  async function refreshEmailVerified() {
+    const current = auth.currentUser;
+    if (!current) return;
+    await current.reload();
+    setEmailVerified(auth.currentUser?.emailVerified ?? true);
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -213,6 +239,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshProfile,
         unreadNotifications,
         refreshUnreadNotifications,
+        emailVerified,
+        resendVerificationEmail,
+        refreshEmailVerified,
       }}
     >
       {children}

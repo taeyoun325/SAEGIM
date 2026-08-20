@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Switch, Platform, ScrollView, Text as RNText } from 'react-native';
 import Text from '../components/Text';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
@@ -25,6 +25,7 @@ import {
   unmuteNotificationType,
 } from '../services/userService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
+import { GUEST_EMAIL_DOMAIN } from '../constants/config';
 import { NotificationType } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
@@ -63,7 +64,18 @@ const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] =
 ];
 
 export default function SettingsScreen() {
-  const { user, profile, signOut, deleteAccount, changePassword, changeEmail, refreshProfile } = useAuth();
+  const {
+    user,
+    profile,
+    signOut,
+    deleteAccount,
+    changePassword,
+    changeEmail,
+    refreshProfile,
+    emailVerified,
+    resendVerificationEmail,
+    refreshEmailVerified,
+  } = useAuth();
   const { confirm, notify, prompt } = useDialog();
   const navigation = useNavigation<Nav>();
   const [reminderOn, setReminderOn] = useState(false);
@@ -71,10 +83,36 @@ export default function SettingsScreen() {
   const [admin, setAdmin] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>('system');
   const { preference: fontScalePreference, setPreference: setFontScalePreference } = useFontScale();
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const isGuestAccount = !!user?.email?.endsWith(GUEST_EMAIL_DOMAIN);
 
   useEffect(() => {
     loadThemePreference().then(setThemePreference);
   }, []);
+
+  // 메일함에서 인증 링크를 누르고 이 화면으로 돌아왔을 때 배너가 알아서 사라지도록,
+  // 화면에 포커스될 때마다 최신 인증 상태를 다시 받아온다.
+  useFocusEffect(
+    useCallback(() => {
+      refreshEmailVerified();
+    }, [refreshEmailVerified])
+  );
+
+  async function handleResendVerification() {
+    setResendingVerification(true);
+    try {
+      await resendVerificationEmail();
+      await notify('메일을 보냈어요', '받은 편지함(스팸함 포함)에서 인증 링크를 확인해주세요.');
+    } catch (e: any) {
+      if (e?.code === 'auth/too-many-requests') {
+        await notify('오류', '잠시 후 다시 시도해주세요.');
+      } else {
+        await notify('오류', '인증 메일을 보내지 못했어요.');
+      }
+    } finally {
+      setResendingVerification(false);
+    }
+  }
 
   async function changeTheme(next: ThemePreference) {
     if (next === themePreference) return;
@@ -443,6 +481,15 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      {!isGuestAccount && !emailVerified && (
+        <View style={styles.verifyBanner}>
+          <Text style={styles.verifyBannerText}>이메일 인증이 아직 안 됐어요. 비밀번호를 잊었을 때 재설정 메일을 받으려면 인증이 필요해요.</Text>
+          <TouchableOpacity onPress={handleResendVerification} disabled={resendingVerification}>
+            <Text style={styles.verifyBannerLink}>{resendingVerification ? '보내는 중...' : '인증 메일 재전송'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.card}>
         <TouchableOpacity style={styles.rowButton} onPress={handleChangeEmail}>
           <Text style={styles.rowButtonText}>이메일 변경</Text>
@@ -481,6 +528,16 @@ const styles = StyleSheet.create({
   rowButtonText: { color: colors.text, fontSize: 15 },
   adminText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   dangerText: { color: colors.danger, fontSize: 15 },
+  verifyBanner: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  verifyBannerText: { color: colors.text, fontSize: 13, lineHeight: 19, marginBottom: spacing.xs },
+  verifyBannerLink: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   categorySection: { paddingVertical: spacing.md },
   notifTypeRow: {
     flexDirection: 'row',
