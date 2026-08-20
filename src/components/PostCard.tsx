@@ -103,7 +103,11 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment,
           <TouchableOpacity onPress={onPressAuthor} disabled={!onPressAuthor}>
             <Text style={styles.nickname}>{nickname}</Text>
           </TouchableOpacity>
-          <Pressable onPress={handleBodyPress}>
+          <Pressable
+            onPress={handleBodyPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${nickname}님의 새김: ${post.lines.join(' ')}. 눌러서 게시물 보기`}
+          >
             {post.lines.map((line, i) => (
               <Text key={i} style={styles.line}>
                 {line}
