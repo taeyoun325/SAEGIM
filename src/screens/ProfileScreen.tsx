@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Text from '../components/Text';
@@ -11,6 +11,10 @@ import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
 import { getCurrentMonthWritingDayCount } from '../services/writingService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
+import { isAdmin } from '../services/adminService';
+import { isDevModeEnabled } from '../services/devModeService';
+import { getCharacterProgress } from '../services/characterService';
+import CharacterGrowthCard from '../components/CharacterGrowthCard';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BADGE_DEFS, BadgeDef } from '../constants/badges';
@@ -34,6 +38,17 @@ export default function ProfileScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
   const [monthDayCount, setMonthDayCount] = useState(0);
+  // 개발자 서버 모드 실험 카드(캐릭터 육성) 노출 여부. 두 조건을 모두 만족해야 보인다
+  // (관리자 계정 + 설정에서 스위치를 켬) — SettingsScreen의 admin 가드와 짝을 이룬다.
+  const [showCharacterExperiment, setShowCharacterExperiment] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const [adminAccount, devMode] = await Promise.all([isAdmin(user.uid), isDevModeEnabled()]);
+      setShowCharacterExperiment(adminAccount && devMode);
+    })();
+  }, [user]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -132,6 +147,9 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.header}>
+            {showCharacterExperiment && profile && (
+              <CharacterGrowthCard progress={getCharacterProgress(profile)} />
+            )}
             <View style={styles.identityRow}>
               <TouchableOpacity
                 onPress={handlePickImage}
