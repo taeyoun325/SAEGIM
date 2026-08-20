@@ -15,6 +15,7 @@ import {
   restoreWriting,
   getTrashedWritings,
   purgeExpiredTrash,
+  toggleWritingFavorite,
   TRASH_GRACE_DAYS,
 } from '../services/writingService';
 import { deleteWritingCompletely, updatePostContent } from '../services/postService';
@@ -30,6 +31,7 @@ export default function MyWritingsScreen() {
   const [writings, setWritings] = useState<Writing[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [selected, setSelected] = useState<Writing | null>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -56,9 +58,24 @@ export default function MyWritingsScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim();
-    if (!q) return writings;
-    return writings.filter((w) => w.lines.some((l) => l.includes(q)));
-  }, [writings, query]);
+    let list = writings;
+    if (favoritesOnly) list = list.filter((w) => w.favorited);
+    if (q) list = list.filter((w) => w.lines.some((l) => l.includes(q)));
+    return list;
+  }, [writings, query, favoritesOnly]);
+
+  async function handleToggleFavorite(writing: Writing) {
+    const next = !writing.favorited;
+    setWritings((prev) => prev.map((w) => (w.id === writing.id ? { ...w, favorited: next } : w)));
+    setSelected((prev) => (prev && prev.id === writing.id ? { ...prev, favorited: next } : prev));
+    try {
+      await toggleWritingFavorite(writing.id, next);
+    } catch (e) {
+      // 실패하면 낙관적으로 바꿨던 표시를 되돌린다.
+      setWritings((prev) => prev.map((w) => (w.id === writing.id ? { ...w, favorited: !next } : w)));
+      setSelected((prev) => (prev && prev.id === writing.id ? { ...prev, favorited: !next } : prev));
+    }
+  }
 
   const stats = useMemo(() => {
     if (writings.length === 0) return null;
@@ -254,6 +271,17 @@ export default function MyWritingsScreen() {
               value={query}
               onChangeText={setQuery}
             />
+            <TouchableOpacity
+              style={[styles.favoriteFilterChip, favoritesOnly && styles.favoriteFilterChipActive]}
+              onPress={() => setFavoritesOnly((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="즐겨찾기만 보기"
+              accessibilityState={{ selected: favoritesOnly }}
+            >
+              <Text style={[styles.favoriteFilterChipText, favoritesOnly && styles.favoriteFilterChipTextActive]}>
+                ⭐ 즐겨찾기만
+              </Text>
+            </TouchableOpacity>
           </View>
         }
         ListEmptyComponent={
@@ -262,20 +290,33 @@ export default function MyWritingsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => openDetail(item)}>
+          <View style={styles.row}>
             <View style={styles.rowHeader}>
               <View style={styles.rowDateGroup}>
                 <Text style={styles.rowDate}>{formatDisplayDate(timestampToDateString(item.createdAt))}</Text>
                 {item.mood && <Text style={styles.rowMood}>{item.mood}</Text>}
               </View>
-              <Text style={item.visibility === 'public' ? styles.publicBadge : styles.privateBadge}>
-                {item.visibility === 'public' ? '🌐 공개' : '🔒 비공개'}
-              </Text>
+              <View style={styles.rowDateGroup}>
+                <Text style={item.visibility === 'public' ? styles.publicBadge : styles.privateBadge}>
+                  {item.visibility === 'public' ? '🌐 공개' : '🔒 비공개'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => handleToggleFavorite(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.favorited ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                  accessibilityState={{ selected: !!item.favorited }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.starIcon}>{item.favorited ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Text style={styles.rowPreview} numberOfLines={2}>
-              {item.lines.join(' · ')}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => openDetail(item)}>
+              <Text style={styles.rowPreview} numberOfLines={2}>
+                {item.lines.join(' · ')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       />
 
@@ -402,6 +443,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     color: colors.text,
   },
+  favoriteFilterChip: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  favoriteFilterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  favoriteFilterChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  favoriteFilterChipTextActive: { color: '#fff' },
+  starIcon: { fontSize: 16 },
   row: {
     backgroundColor: colors.card,
     borderRadius: radius.md,

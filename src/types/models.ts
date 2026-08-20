@@ -20,6 +20,7 @@ export interface Writing {
   category?: string; // 글감 카테고리(개인 통계용 비정규화)
   deletedAt?: number | null; // 비공개 글을 지우면 바로 없애지 않고 휴지통 기간(30일) 동안 이 값만 채운다
   mood?: string | null; // 글을 쓸 때 남긴 기분 이모지(선택). MOOD_OPTIONS 중 하나.
+  favorited?: boolean; // "내 새김 관리"에서 즐겨찾기로 표시해 빠르게 다시 찾을 수 있게 한다.
 }
 
 export interface Post {
