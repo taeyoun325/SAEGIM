@@ -51,6 +51,7 @@ export default function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorId: string; nickname: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [posting, setPosting] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -60,9 +61,16 @@ export default function PostDetailScreen() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setNotFound(false);
     try {
       const p = await getPostById(postId);
       setPost(p);
+      if (!p) {
+        // 삭제됐거나 애초에 없는 글일 수 있다(작성자가 지운 뒤 남아있던 링크로
+        // 들어온 경우 등) — 이때 무한 로딩으로 남지 않고 안내와 함께 빠져나갈
+        // 길을 보여줘야 한다.
+        setNotFound(true);
+      }
       if (p) {
         const author = await getDisplayProfile(p.userId);
         setAuthorNickname(author?.nickname ?? '알 수 없음');
@@ -299,6 +307,17 @@ export default function PostDetailScreen() {
     }
   }
 
+  if (notFound) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.notFoundText}>이 글을 찾을 수 없어요.{'\n'}작성자가 지웠거나, 링크가 잘못됐을 수 있어요.</Text>
+        <TouchableOpacity style={styles.notFoundButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.notFoundButtonText}>뒤로 가기</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (loading || !post) {
     return (
       <View style={styles.center}>
@@ -486,6 +505,9 @@ export default function PostDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  notFoundText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22, paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  notFoundButton: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
+  notFoundButtonText: { color: colors.primary, fontWeight: '600' },
   offscreen: { position: 'absolute', top: 0, left: -9999 },
   list: { padding: spacing.lg, paddingBottom: spacing.xl },
   postCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
