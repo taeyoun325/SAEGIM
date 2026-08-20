@@ -28,7 +28,7 @@ import { getDisplayProfile } from '../services/userService';
 import { logEvent } from '../services/statsService';
 import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
-import { containsSensitiveWord, matchesMutedKeyword } from '../utils/textFilter';
+import { containsSensitiveWord } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -115,17 +115,11 @@ export default function PostDetailScreen() {
     setLoading(true);
   }
 
-  // 차단한 사람의 댓글, 뮤트한 단어가 들어간 댓글은 피드/캘린더와 마찬가지로
-  // 여기서도 보이면 안 된다. 차단은 이미 처리돼 있었지만, 키워드 뮤트는 지금까지
-  // 글(피드/캘린더)에만 적용되고 댓글에는 전혀 적용되지 않고 있었다 — 특정 단어를
-  // 안 보려고 뮤트해도 그 단어가 든 댓글은 그대로 노출됐다.
+  // 차단한 사람의 댓글은 피드/캘린더와 마찬가지로 여기서도 보이면 안 된다.
   const visibleComments = useMemo(() => {
     const blockedIds = profile?.blockedUserIds ?? [];
-    const mutedKeywords = profile?.mutedKeywords ?? [];
-    return comments.filter(
-      (c) => !blockedIds.includes(c.userId) && !matchesMutedKeyword([c.content], mutedKeywords)
-    );
-  }, [comments, profile?.blockedUserIds, profile?.mutedKeywords]);
+    return comments.filter((c) => !blockedIds.includes(c.userId));
+  }, [comments, profile?.blockedUserIds]);
 
   // 댓글 목록을 "최상위 댓글 → 그 밑에 딸린 답글" 순서로 다시 배열한다.
   // 답글은 한 단계뿐이고, 커서 페이지네이션 경계에 걸려 부모를 아직 못 불러온 답글은

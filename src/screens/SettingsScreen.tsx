@@ -21,12 +21,9 @@ import { isAppLockEnabled, setAppLockPin, disableAppLock, isValidPin } from '../
 import { isDevModeEnabled, setDevModeEnabled } from '../services/devModeService';
 import {
   updateUserProfile,
-  muteKeyword,
-  unmuteKeyword,
   muteNotificationType,
   unmuteNotificationType,
 } from '../services/userService';
-import { PROMPT_CATEGORIES } from '../constants/promptPool';
 import { GUEST_EMAIL_DOMAIN, MONTHLY_GOAL_OPTIONS } from '../constants/config';
 import { NotificationType } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
@@ -132,14 +129,6 @@ export default function SettingsScreen() {
     await notify('테마를 저장했어요', '앱을 다시 시작하면 새 테마로 열려요.');
   }
 
-  async function togglePreferredCategory(category: string) {
-    if (!user || !profile) return;
-    const current = profile.preferredCategories ?? [];
-    const next = current.includes(category) ? current.filter((c) => c !== category) : [...current, category];
-    await updateUserProfile(user.uid, { preferredCategories: next });
-    await refreshProfile();
-  }
-
   async function handleSetMonthlyGoal(value: number | null) {
     if (!user) return;
     await updateUserProfile(user.uid, { monthlyGoal: value });
@@ -173,25 +162,6 @@ export default function SettingsScreen() {
       await disableAppLock();
       setAppLockOn(false);
     }
-  }
-
-  async function handleAddMutedKeyword() {
-    if (!user) return;
-    const keyword = await prompt({
-      title: '뮤트할 단어',
-      message: '이 단어가 들어간 글/댓글은 보이지 않아요.',
-      placeholder: '예: 스포일러',
-      confirmLabel: '추가',
-    });
-    if (!keyword || !keyword.trim()) return;
-    await muteKeyword(user.uid, keyword);
-    await refreshProfile();
-  }
-
-  async function handleRemoveMutedKeyword(keyword: string) {
-    if (!user) return;
-    await unmuteKeyword(user.uid, keyword);
-    await refreshProfile();
   }
 
   async function toggleNotificationType(type: NotificationType, currentlyOn: boolean) {
@@ -515,58 +485,6 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               );
             })}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.categorySection}>
-          <Text style={styles.rowButtonText}>선호 글감 카테고리</Text>
-          <Text style={styles.categoryHint}>나중에 맞춤 글감 추천에 활용돼요.</Text>
-          <View style={styles.categoryRow}>
-            {PROMPT_CATEGORIES.map((c) => {
-              const selected = profile?.preferredCategories?.includes(c);
-              return (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.categoryChip, selected && styles.categoryChipSelected]}
-                  onPress={() => togglePreferredCategory(c)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`선호 글감 카테고리 ${c}`}
-                  aria-selected={!!selected}
-                >
-                  <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{c}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.categorySection}>
-          <Text style={styles.rowButtonText}>키워드 뮤트</Text>
-          <Text style={styles.categoryHint}>이 단어가 들어간 글/댓글은 보이지 않아요. 눌러서 해제해요.</Text>
-          <View style={styles.categoryRow}>
-            {(profile?.mutedKeywords ?? []).map((k) => (
-              <TouchableOpacity
-                key={k}
-                style={styles.mutedChip}
-                onPress={() => handleRemoveMutedKeyword(k)}
-                accessibilityRole="button"
-                accessibilityLabel={`뮤트 단어 ${k} 해제`}
-              >
-                <Text style={styles.mutedChipText}>{k} ✕</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={styles.addMutedChip}
-              onPress={handleAddMutedKeyword}
-              accessibilityRole="button"
-              accessibilityLabel="뮤트 단어 추가"
-            >
-              <Text style={styles.addMutedChipText}>+ 단어 추가</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>

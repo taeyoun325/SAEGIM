@@ -17,11 +17,19 @@ interface Props {
   // 목록 화면이 좋아요 여부를 미리 한 번에 조회해 넘겨주면 카드가 따로 조회하지 않는다.
   // 넘기지 않으면 카드가 알아서 조회하므로 기존 화면들은 그대로 동작한다.
   liked?: boolean;
+  // 인기순으로 정렬된 목록에서 1~3위일 때만 호출부가 넘겨준다. 그 외에는 평범한 카드.
+  rank?: 1 | 2 | 3;
 }
 
 const DOUBLE_TAP_MS = 300;
 
-export default function PostCard({ post, onPress, onPressAuthor, onPressComment, liked: likedProp }: Props) {
+const MEDAL: Record<1 | 2 | 3, { emoji: string; label: string; color: string }> = {
+  1: { emoji: '🥇', label: '인기 1위', color: '#d4a017' },
+  2: { emoji: '🥈', label: '인기 2위', color: '#9aa5b1' },
+  3: { emoji: '🥉', label: '인기 3위', color: '#b0703a' },
+};
+
+export default function PostCard({ post, onPress, onPressAuthor, onPressComment, liked: likedProp, rank }: Props) {
   const { user } = useAuth();
   const { share } = useShare();
   const [nickname, setNickname] = useState<string>('...');
@@ -96,8 +104,17 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment,
     }, DOUBLE_TAP_MS);
   }
 
+  const medal = rank ? MEDAL[rank] : null;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, medal && { borderColor: medal.color, borderWidth: 2 }]}>
+      {medal && (
+        <View style={[styles.medalBadge, { backgroundColor: medal.color }]}>
+          <Text style={styles.medalBadgeText}>
+            {medal.emoji} {medal.label}
+          </Text>
+        </View>
+      )}
       <View style={styles.row}>
         <View style={styles.mainCol}>
           <TouchableOpacity onPress={onPressAuthor} disabled={!onPressAuthor}>
@@ -171,6 +188,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  medalBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginBottom: spacing.sm,
+  },
+  medalBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   row: { flexDirection: 'row' },
   mainCol: { flex: 1, paddingRight: spacing.sm },
   nickname: { fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },

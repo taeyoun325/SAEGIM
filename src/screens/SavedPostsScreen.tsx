@@ -11,7 +11,6 @@ import PostCard from '../components/PostCard';
 import { useAuth } from '../context/AuthContext';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
-import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -26,20 +25,16 @@ export default function SavedPostsScreen() {
 
   // 저장한 글이 쌓일수록 예전에 저장해둔 특정 글을 다시 찾기 어려워진다
   // ("저장은 쉬운데 나중에 찾기가 어렵다"는 게 북마크 기능의 흔한 약점이다).
-  // 차단/키워드 뮤트는 피드/캘린더/댓글/알림함과 마찬가지로 여기서도 적용돼야 한다 —
-  // 저장해둔 뒤에 그 사람을 차단하거나 그 단어를 뮤트했다면 더 이상 보이면 안 된다
-  // (차단은 이미 처리돼 있었지만, 키워드 뮤트는 이 화면만 빠져 있었다).
+  // 차단은 피드/캘린더/댓글/알림함과 마찬가지로 여기서도 적용돼야 한다 —
+  // 저장해둔 뒤에 그 사람을 차단했다면 더 이상 보이면 안 된다.
   const filtered = useMemo(() => {
     const blockedIds = profile?.blockedUserIds ?? [];
-    const mutedKeywords = profile?.mutedKeywords ?? [];
-    let visible = posts.filter(
-      (p) => !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords)
-    );
+    let visible = posts.filter((p) => !blockedIds.includes(p.userId));
     if (categoryFilter) visible = visible.filter((p) => p.category === categoryFilter);
     const q = query.trim();
     if (!q) return visible;
     return visible.filter((p) => p.lines.some((l) => l.includes(q)));
-  }, [posts, query, categoryFilter, profile?.blockedUserIds, profile?.mutedKeywords]);
+  }, [posts, query, categoryFilter, profile?.blockedUserIds]);
 
   const usedCategories = useMemo(() => {
     const set = new Set<string>();

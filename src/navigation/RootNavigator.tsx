@@ -24,6 +24,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import SplashScreen from '../screens/SplashScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import PracticeWritingScreen from '../screens/PracticeWritingScreen';
+import CharacterScreen from '../screens/CharacterScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -76,6 +77,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       MyWritings: 'MyWritings',
       SavedPosts: 'SavedPosts',
       PracticeWriting: 'PracticeWriting',
+      Character: 'Character',
       Notifications: 'Notifications',
     },
   },
@@ -142,6 +144,7 @@ export default function RootNavigator() {
           <Stack.Screen name="MyWritings" component={MyWritingsScreen} options={{ title: '내 새김 관리' }} />
           <Stack.Screen name="SavedPosts" component={SavedPostsScreen} options={{ title: '저장한 글' }} />
           <Stack.Screen name="PracticeWriting" component={PracticeWritingScreen} options={{ title: '지난 글감 다시 써보기' }} />
+          <Stack.Screen name="Character" component={CharacterScreen} options={{ title: '🧪 캐릭터 육성' }} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: '알림' }} />
         </Stack.Navigator>
       )}

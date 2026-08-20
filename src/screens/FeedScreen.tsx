@@ -14,7 +14,6 @@ import TopBarButtons from '../components/TopBarButtons';
 import { RootStackParamList, MainTabParamList } from '../navigation/types';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type TabNav = NativeStackNavigationProp<MainTabParamList>;
@@ -24,7 +23,6 @@ export default function FeedScreen() {
   const tabNavigation = useNavigation<TabNav>();
   const { user, profile } = useAuth();
   const blockedIds = profile?.blockedUserIds ?? [];
-  const mutedKeywords = profile?.mutedKeywords ?? [];
   const [prompt, setPrompt] = useState<DailyPrompt | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   // 카드마다 좋아요 여부를 따로 묻지 않도록 한 쪽 분량을 한 번에 조회해 들고 있는다.
@@ -76,7 +74,7 @@ export default function FeedScreen() {
   }
 
   function isVisible(p: Post) {
-    return !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords);
+    return !blockedIds.includes(p.userId);
   }
 
   function handleRandomBrowse() {
@@ -189,12 +187,13 @@ export default function FeedScreen() {
             <BackgroundMascot source={require('../assets/mascot-feed.png')} />
           </>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <PostCard
             post={item}
             liked={likedPostIds.has(item.id)}
             onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
             onPressAuthor={() => navigation.navigate('OtherProfile', { userId: item.userId })}
+            rank={sort === 'popular' && index < 3 ? ((index + 1) as 1 | 2 | 3) : undefined}
           />
         )}
       />

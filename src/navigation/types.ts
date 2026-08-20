@@ -26,5 +26,6 @@ export type RootStackParamList = {
   MyWritings: undefined;
   SavedPosts: undefined;
   PracticeWriting: undefined;
+  Character: undefined;
   Notifications: undefined;
 };

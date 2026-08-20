@@ -31,9 +31,7 @@ export async function createUserProfile(uid: string, nickname: string): Promise<
     earnedBadgeIds: [],
     bio: null,
     bestStreak: 0,
-    preferredCategories: [],
     streakFreezes: 0,
-    mutedKeywords: [],
   };
   await setDoc(doc(db, usersCol, uid), profile);
   bumpDailyStats({ newSignups: 1 }).catch(() => {});
@@ -90,18 +88,6 @@ export async function blockUser(uid: string, targetUid: string): Promise<void> {
 
 export async function unblockUser(uid: string, targetUid: string): Promise<void> {
   await updateDoc(doc(db, usersCol, uid), { blockedUserIds: arrayRemove(targetUid) });
-}
-
-// 사람이 아니라 내용으로 거르는 뮤트. 저장은 원래 대소문자 그대로 해서 목록에 보여줄 때
-// 사용자가 입력한 그대로 보이게 하고, 실제 비교(matchesMutedKeyword)에서만 소문자로 맞춘다.
-export async function muteKeyword(uid: string, keyword: string): Promise<void> {
-  const trimmed = keyword.trim();
-  if (!trimmed) return;
-  await updateDoc(doc(db, usersCol, uid), { mutedKeywords: arrayUnion(trimmed) });
-}
-
-export async function unmuteKeyword(uid: string, keyword: string): Promise<void> {
-  await updateDoc(doc(db, usersCol, uid), { mutedKeywords: arrayRemove(keyword) });
 }
 
 // 알림 종류별로 끌 수 있게 한다. 신고 처리 결과 알림은 여기 포함하지 않는다

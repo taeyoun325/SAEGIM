@@ -14,7 +14,6 @@ import PostCard from '../components/PostCard';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
-import { matchesMutedKeyword } from '../utils/textFilter';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -91,10 +90,7 @@ export default function CalendarScreen() {
       const [prompt, feed] = await Promise.all([getPromptById(promptId), getPromptFeed(promptId, null, 'popular')]);
       setSelectedPrompt(prompt);
       const blockedIds = profile?.blockedUserIds ?? [];
-      const mutedKeywords = profile?.mutedKeywords ?? [];
-      setPopularPosts(
-        feed.posts.filter((p) => !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords)).slice(0, 5)
-      );
+      setPopularPosts(feed.posts.filter((p) => !blockedIds.includes(p.userId)).slice(0, 5));
     } finally {
       setDetailLoading(false);
     }
@@ -243,7 +239,7 @@ export default function CalendarScreen() {
                   {popularPosts.length === 0 ? (
                     <Text style={styles.emptyText}>공개된 글이 없어요.</Text>
                   ) : (
-                    popularPosts.map((p) => (
+                    popularPosts.map((p, i) => (
                       <PostCard
                         key={p.id}
                         post={p}
@@ -252,6 +248,7 @@ export default function CalendarScreen() {
                           closeModal();
                           navigation.navigate('PostDetail', { postId: p.id });
                         }}
+                        rank={i < 3 ? ((i + 1) as 1 | 2 | 3) : undefined}
                       />
                     ))
                   )}
