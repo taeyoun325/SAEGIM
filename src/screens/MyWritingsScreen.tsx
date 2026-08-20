@@ -22,7 +22,9 @@ import { deleteWritingCompletely, updatePostContent } from '../services/postServ
 import { syncUserCounts } from '../services/userService';
 import { exportWritings, exportWritingsJson } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
-import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { formatDisplayDate, timestampToDateString, recentDateStrings } from '../utils/date';
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 import { moodLabel, MOOD_OPTIONS } from '../constants/moods';
 
 export default function MyWritingsScreen() {
@@ -108,6 +110,21 @@ export default function MyWritingsScreen() {
       topCategory: topCategory ? topCategory[0] : null,
       topMood: topMood ? { emoji: topMood[0], label: moodLabel(topMood[0]) } : null,
     };
+  }, [writings]);
+
+  const weekly = useMemo(() => {
+    const days = recentDateStrings(7);
+    const writtenDates = new Set(writings.map((w) => timestampToDateString(w.createdAt)));
+    const marks = days.map((d) => {
+      const [y, m, day] = d.split('-').map(Number);
+      return {
+        date: d,
+        weekday: WEEKDAY_LABELS[new Date(y, m - 1, day).getDay()],
+        written: writtenDates.has(d),
+        isToday: d === days[days.length - 1],
+      };
+    });
+    return { marks, count: marks.filter((m) => m.written).length };
   }, [writings]);
 
   function openDetail(w: Writing) {
@@ -282,6 +299,26 @@ export default function MyWritingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            {writings.length > 0 && (
+              <View style={styles.weekCard}>
+                <Text style={styles.weekTitle}>이번 주 새김 {weekly.count}/7일</Text>
+                <View style={styles.weekRow}>
+                  {weekly.marks.map((m) => (
+                    <View key={m.date} style={styles.weekDayCol}>
+                      <Text style={styles.weekDayLabel}>{m.weekday}</Text>
+                      <View
+                        style={[
+                          styles.weekDot,
+                          m.written && styles.weekDotFilled,
+                          m.isToday && styles.weekDotToday,
+                        ]}
+                        accessibilityLabel={`${formatDisplayDate(m.date)} ${m.written ? '새김' : '새기지 않음'}${m.isToday ? ', 오늘' : ''}`}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
             {stats && (
               <View style={styles.statsCard}>
                 <Text style={styles.statsHeadline}>지금까지 {stats.total}개의 생각을 남겼어요.</Text>
@@ -531,6 +568,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   exportButtonText: { color: colors.textSoft, fontSize: 13, fontWeight: '600' },
+  weekCard: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.md },
+  weekTitle: { color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDayCol: { alignItems: 'center', gap: spacing.xs },
+  weekDayLabel: { color: colors.textSoft, fontSize: 11 },
+  weekDot: { width: 20, height: 20, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+  weekDotFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
+  weekDotToday: { borderColor: colors.accent, borderWidth: 2 },
   statsCard: { backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
   statsHeadline: { color: colors.primary, fontWeight: '700', fontSize: 15, marginBottom: spacing.xs },
   statsLine: { color: colors.text, fontSize: 13, marginTop: 2 },

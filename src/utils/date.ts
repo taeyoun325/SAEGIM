@@ -43,6 +43,16 @@ export function timestampToDateString(ms: number): string {
   return `${y}-${m}-${day}`;
 }
 
+// 오늘을 포함해 최근 N일의 날짜 문자열을 오래된 날짜순으로 반환한다.
+// "이번 주 새김" 같은 최근 N일 요약 위젯에 쓴다.
+export function recentDateStrings(days: number): string[] {
+  const result: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    result.push(timestampToDateString(Date.now() - i * 24 * 60 * 60 * 1000));
+  }
+  return result;
+}
+
 // N년 전 오늘(같은 월/일)의 promptId를 구한다. "1년 전 오늘" 회고 카드에 쓴다.
 // 2/29처럼 대상 연도에 없는 날짜는 Date가 자동으로 다음 날로 보정한다(연 1회, 4년에 한 번뿐인
 // 아주 드문 경우라 별도 처리를 두지 않는다).
