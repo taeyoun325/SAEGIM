@@ -14,6 +14,7 @@ import { db } from '../config/firebase';
 import { Writing } from '../types/models';
 import { WRITING_TOTAL_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED } from '../constants/config';
 import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
+import { timestampToDateString, todayDateString } from '../utils/date';
 
 const writingsCol = 'writings';
 
@@ -138,5 +139,16 @@ export async function linkWritingToPost(writingId: string, postId: string | null
 
 export async function updateWritingMood(writingId: string, mood: string | null): Promise<void> {
   await updateDoc(doc(db, writingsCol, writingId), { mood });
+}
+
+// 이번 달 목표 진행률 계산용: 이번 달에 새긴(휴지통 제외) 날짜 수를 센다.
+// 같은 날 여러 편을 써도 하루로만 센다 — 목표가 "며칠 썼는지"이지 "몇 편 썼는지"가 아니다.
+export async function getCurrentMonthWritingDayCount(userId: string): Promise<number> {
+  const writings = await getMyWritings(userId);
+  const currentMonth = todayDateString().slice(0, 7);
+  const days = new Set(
+    writings.map((w) => timestampToDateString(w.createdAt)).filter((d) => d.slice(0, 7) === currentMonth)
+  );
+  return days.size;
 }
 

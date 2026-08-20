@@ -9,6 +9,7 @@ import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
+import { getCurrentMonthWritingDayCount } from '../services/writingService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
@@ -32,6 +33,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
+  const [monthDayCount, setMonthDayCount] = useState(0);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -39,6 +41,10 @@ export default function ProfileScreen() {
     try {
       const list = await getUserPublicPosts(user.uid);
       setPosts(list);
+
+      if (profile?.monthlyGoal) {
+        setMonthDayCount(await getCurrentMonthWritingDayCount(user.uid));
+      }
 
       if (profile) {
         // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
@@ -57,7 +63,7 @@ export default function ProfileScreen() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profile?.earnedBadgeIds]);
+  }, [user, profile?.earnedBadgeIds, profile?.monthlyGoal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -185,6 +191,23 @@ export default function ProfileScreen() {
               🧊 연속 기록 보호권 {profile.streakFreezes ?? 0}개 — 하루를 걸러도 스트릭이 안 끊겨요. 스트릭 배지를 딸 때마다 하나씩 생겨요.
             </Text>
 
+            {profile.monthlyGoal && (
+              <View style={styles.goalSection}>
+                <View style={styles.goalHeader}>
+                  <Text style={styles.goalLabel}>이번 달 목표</Text>
+                  <Text style={styles.goalValue}>{monthDayCount}/{profile.monthlyGoal}일</Text>
+                </View>
+                <View style={styles.goalTrack}>
+                  <View
+                    style={[
+                      styles.goalFill,
+                      { width: `${Math.min(100, (monthDayCount / profile.monthlyGoal) * 100)}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+
             <View style={styles.linkRow}>
               <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('MyWritings')}>
                 <Text style={styles.linkButtonText}>📖 내 새김 관리</Text>
@@ -267,6 +290,12 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.textSoft, fontSize: 12, marginTop: spacing.xs },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: spacing.sm, marginBottom: spacing.sm },
   freezeNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.md },
+  goalSection: { marginBottom: spacing.md },
+  goalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
+  goalLabel: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  goalValue: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  goalTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.border, overflow: 'hidden' },
+  goalFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.primary },
   linkRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   linkButton: {
     flex: 1,

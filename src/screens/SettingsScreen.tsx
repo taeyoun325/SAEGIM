@@ -25,7 +25,7 @@ import {
   unmuteNotificationType,
 } from '../services/userService';
 import { PROMPT_CATEGORIES } from '../constants/promptPool';
-import { GUEST_EMAIL_DOMAIN } from '../constants/config';
+import { GUEST_EMAIL_DOMAIN, MONTHLY_GOAL_OPTIONS } from '../constants/config';
 import { NotificationType } from '../types/models';
 import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
@@ -132,6 +132,12 @@ export default function SettingsScreen() {
     const current = profile.preferredCategories ?? [];
     const next = current.includes(category) ? current.filter((c) => c !== category) : [...current, category];
     await updateUserProfile(user.uid, { preferredCategories: next });
+    await refreshProfile();
+  }
+
+  async function handleSetMonthlyGoal(value: number | null) {
+    if (!user) return;
+    await updateUserProfile(user.uid, { monthlyGoal: value });
     await refreshProfile();
   }
 
@@ -402,6 +408,33 @@ export default function SettingsScreen() {
                     가
                   </RNText>
                   <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.categorySection}>
+          <Text style={styles.rowButtonText}>이번 달 목표</Text>
+          <Text style={styles.categoryHint}>이번 달에 며칠 새기고 싶은지 골라두면 진행률을 보여줘요.</Text>
+          <View style={styles.themeRow}>
+            <TouchableOpacity
+              style={[styles.themeChip, !profile?.monthlyGoal && styles.themeChipSelected]}
+              onPress={() => handleSetMonthlyGoal(null)}
+            >
+              <Text style={[styles.themeChipText, !profile?.monthlyGoal && styles.themeChipTextSelected]}>안 함</Text>
+            </TouchableOpacity>
+            {MONTHLY_GOAL_OPTIONS.map((days) => {
+              const selected = profile?.monthlyGoal === days;
+              return (
+                <TouchableOpacity
+                  key={days}
+                  style={[styles.themeChip, selected && styles.themeChipSelected]}
+                  onPress={() => handleSetMonthlyGoal(days)}
+                >
+                  <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{days}일</Text>
                 </TouchableOpacity>
               );
             })}
