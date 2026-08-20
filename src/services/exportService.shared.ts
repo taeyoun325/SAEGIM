@@ -40,3 +40,44 @@ export function buildExportJson(writings: Writing[]): string {
   }));
   return JSON.stringify({ app: '새김', exportedAt: new Date().toISOString(), count: entries.length, entries }, null, 2);
 }
+
+// 인쇄해서 보관하거나 선물하고 싶다는 요구는 Day One·Journey·Diarly 등 주요 저널링
+// 앱들이 공통으로 지원하는 내보내기 형식이다. 브라우저 인쇄 대화상자를 그대로 활용하면
+// 별도 PDF 라이브러리 없이도 "PDF로 저장"이 가능해, 인쇄 전용 HTML 문서를 만든다.
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function buildExportHtml(writings: Writing[]): string {
+  const sorted = [...writings].sort((a, b) => a.createdAt - b.createdAt);
+  const entriesHtml = sorted
+    .map((w) => {
+      const date = formatDisplayDate(timestampToDateString(w.createdAt));
+      const visibility = w.visibility === 'public' ? '공개' : '비공개';
+      const lines = w.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('');
+      return `<article><h2>${date}${w.mood ? ` ${w.mood}` : ''} <span>(${visibility})</span></h2>${lines}</article>`;
+    })
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>새김 — 내가 새긴 생각</title>
+<style>
+  body { font-family: Georgia, 'Noto Serif KR', serif; color: #2b2320; max-width: 640px; margin: 0 auto; padding: 40px 24px; line-height: 1.7; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: #8a7f76; font-size: 13px; margin-bottom: 32px; }
+  article { margin-bottom: 28px; page-break-inside: avoid; border-bottom: 1px solid #e6ddd4; padding-bottom: 20px; }
+  h2 { font-size: 15px; color: #8a5a3b; margin-bottom: 8px; }
+  h2 span { color: #a89c8f; font-weight: normal; font-size: 12px; }
+  p { margin: 0 0 6px; font-size: 15px; }
+</style>
+</head>
+<body>
+<h1>새김 — 내가 새긴 생각</h1>
+<div class="meta">내보낸 날짜: ${formatDisplayDate(timestampToDateString(Date.now()))} · 총 ${sorted.length}개</div>
+${entriesHtml}
+</body>
+</html>`;
+}

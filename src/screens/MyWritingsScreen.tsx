@@ -22,7 +22,7 @@ import {
 } from '../services/writingService';
 import { deleteWritingCompletely, updatePostContent } from '../services/postService';
 import { syncUserCounts } from '../services/userService';
-import { exportWritings, exportWritingsJson } from '../services/exportService';
+import { exportWritings, exportWritingsJson, exportWritingsPdf } from '../services/exportService';
 import { WRITING_TOTAL_MAX_LENGTH } from '../constants/config';
 import { formatDisplayDate, timestampToDateString, recentDateStrings } from '../utils/date';
 
@@ -202,6 +202,20 @@ export default function MyWritingsScreen() {
     }
   }
 
+  // 인쇄해서 보관하거나 선물하고 싶은 사용자를 위한 경로. 웹에서는 브라우저 인쇄
+  // 대화상자로 실제 PDF 저장까지 이어진다("PDF로 저장" 선택 시).
+  async function handleExportPdf() {
+    if (writings.length === 0) {
+      await notify('내보낼 글이 없어요', '아직 새긴 생각이 없어요.');
+      return;
+    }
+    try {
+      await exportWritingsPdf(writings);
+    } catch (e) {
+      await notify('오류', '내보내기에 실패했어요.');
+    }
+  }
+
   async function handleDelete() {
     if (!selected || !user) return;
     const isPrivate = selected.visibility !== 'public';
@@ -310,6 +324,14 @@ export default function MyWritingsScreen() {
                   accessibilityLabel="내 새김 JSON으로 내보내기"
                 >
                   <Text style={styles.exportButtonText}>🧩 JSON</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleExportPdf}
+                  style={styles.exportButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="내 새김 인쇄용 PDF로 내보내기"
+                >
+                  <Text style={styles.exportButtonText}>🖨️ 인쇄/PDF</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -606,8 +628,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   list: { padding: spacing.lg, paddingBottom: spacing.xl },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  titleButtons: { flexDirection: 'row', gap: spacing.sm },
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, gap: spacing.sm },
+  titleButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   title: { fontSize: 22, fontWeight: '800', color: colors.primary },
   exportButton: {
     borderRadius: radius.full,
