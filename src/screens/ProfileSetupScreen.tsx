@@ -37,10 +37,16 @@ export default function ProfileSetupScreen() {
         onChangeText={setNickname}
       />
       {error && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSubmit}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel="시작하기"
+      >
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>시작하기</Text>}
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => signOut()}>
+      <TouchableOpacity onPress={() => signOut()} accessibilityRole="button" accessibilityLabel="다른 계정으로 로그인하기">
         <Text style={styles.link}>다른 계정으로 로그인하기</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>

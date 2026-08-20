@@ -51,10 +51,16 @@ export default function AppLockScreen({ onUnlock, onLogout }: Props) {
         autoFocus
       />
       {error && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={pin.length === 0 || checking}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleSubmit}
+        disabled={pin.length === 0 || checking}
+        accessibilityRole="button"
+        accessibilityLabel="잠금 해제"
+      >
         <Text style={styles.buttonText}>잠금 해제</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={onLogout} style={styles.logoutLink}>
+      <TouchableOpacity onPress={onLogout} style={styles.logoutLink} accessibilityRole="button" accessibilityLabel="PIN을 잊으셨나요, 로그아웃">
         <Text style={styles.logoutText}>PIN을 잊으셨나요? 로그아웃</Text>
       </TouchableOpacity>
     </View>

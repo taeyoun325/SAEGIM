@@ -49,6 +49,8 @@ export default function OnboardingScreen({ navigation }: Props) {
           }
           await skip();
         }}
+        accessibilityRole="button"
+        accessibilityLabel={isLast ? '시작하기' : '다음'}
       >
         <Text style={styles.buttonText}>{isLast ? '시작하기' : '다음'}</Text>
       </TouchableOpacity>

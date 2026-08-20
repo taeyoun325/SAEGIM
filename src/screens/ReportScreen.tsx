@@ -49,7 +49,14 @@ export default function ReportScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>신고 이유를 선택해주세요</Text>
       {REASONS.map((r) => (
-        <TouchableOpacity key={r.value} style={[styles.reasonRow, reason === r.value && styles.reasonRowSelected]} onPress={() => setReason(r.value)}>
+        <TouchableOpacity
+          key={r.value}
+          style={[styles.reasonRow, reason === r.value && styles.reasonRowSelected]}
+          onPress={() => setReason(r.value)}
+          accessibilityRole="button"
+          accessibilityLabel={`신고 이유: ${r.label}`}
+          aria-selected={reason === r.value}
+        >
           <Text style={styles.reasonText}>{r.label}</Text>
         </TouchableOpacity>
       ))}
@@ -61,7 +68,13 @@ export default function ReportScreen() {
         onChangeText={setDetail}
         multiline
       />
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={!reason || submitting}>
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleSubmit}
+        disabled={!reason || submitting}
+        accessibilityRole="button"
+        accessibilityLabel="신고하기"
+      >
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>신고하기</Text>}
       </TouchableOpacity>
     </View>

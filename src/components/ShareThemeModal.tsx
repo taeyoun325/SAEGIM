@@ -19,7 +19,13 @@ export default function ShareThemeModal({ visible, onSelect, onClose }: Props) {
           <Text style={styles.title}>공유 카드 테마</Text>
           <View style={styles.grid}>
             {SHARE_THEMES.map((theme) => (
-              <TouchableOpacity key={theme.id} style={styles.item} onPress={() => onSelect(theme)}>
+              <TouchableOpacity
+                key={theme.id}
+                style={styles.item}
+                onPress={() => onSelect(theme)}
+                accessibilityRole="button"
+                accessibilityLabel={`${theme.name} 테마로 공유`}
+              >
                 <LinearGradient colors={theme.gradient} style={[styles.swatch, { borderColor: theme.accentColor }]}>
                   <Text style={[styles.swatchText, { color: theme.textColor }]}>새김</Text>
                 </LinearGradient>
@@ -27,7 +33,7 @@ export default function ShareThemeModal({ visible, onSelect, onClose }: Props) {
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose} accessibilityRole="button" accessibilityLabel="취소">
             <Text style={styles.closeButtonText}>취소</Text>
           </TouchableOpacity>
         </View>

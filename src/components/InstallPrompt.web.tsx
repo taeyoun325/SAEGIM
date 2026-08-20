@@ -76,11 +76,11 @@ export default function InstallPrompt() {
       </Text>
       <View style={styles.actions}>
         {deferredEvent && (
-          <TouchableOpacity style={styles.installButton} onPress={handleInstall}>
+          <TouchableOpacity style={styles.installButton} onPress={handleInstall} accessibilityRole="button" accessibilityLabel="홈 화면에 설치">
             <Text style={styles.installButtonText}>설치</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleDismiss}>
+        <TouchableOpacity onPress={handleDismiss} accessibilityRole="button" accessibilityLabel="설치 안내 닫기">
           <Text style={styles.dismissText}>닫기</Text>
         </TouchableOpacity>
       </View>

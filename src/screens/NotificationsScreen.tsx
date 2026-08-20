@@ -161,6 +161,10 @@ export default function NotificationsScreen() {
               if (NON_NAVIGABLE_TYPES.has(item.type)) return;
               navigation.navigate('PostDetail', { postId: item.postId });
             }}
+            accessibilityRole={NON_NAVIGABLE_TYPES.has(item.type) ? undefined : 'button'}
+            accessibilityLabel={`${isReport ? '' : item.actorNickname + (item.extraCount > 0 ? `님 외 ${item.extraCount}명` : '') + ' '}${
+              item.extraCount > 0 ? MESSAGE[item.type].replace(/^님이/, '이') : MESSAGE[item.type]
+            }`}
           >
             <Text style={styles.icon}>{ICON[item.type]}</Text>
             <View style={styles.textCol}>

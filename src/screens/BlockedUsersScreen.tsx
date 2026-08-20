@@ -74,7 +74,12 @@ export default function BlockedUsersScreen() {
       renderItem={({ item }) => (
         <View style={styles.row}>
           <Text style={styles.nickname}>{nicknames[item] ?? '...'}</Text>
-          <TouchableOpacity onPress={() => handleUnblock(item)} disabled={busyId === item}>
+          <TouchableOpacity
+            onPress={() => handleUnblock(item)}
+            disabled={busyId === item}
+            accessibilityRole="button"
+            accessibilityLabel={`${nicknames[item] ?? '이 사용자'} 차단 해제`}
+          >
             <Text style={styles.unblockText}>{busyId === item ? '처리 중...' : '차단 해제'}</Text>
           </TouchableOpacity>
         </View>
