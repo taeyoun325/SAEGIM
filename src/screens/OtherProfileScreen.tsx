@@ -27,13 +27,18 @@ export default function OtherProfileScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setNotFound(false);
     try {
       const [p, list] = await Promise.all([getUserProfile(userId), getUserPublicPosts(userId)]);
       setProfile(p);
       setPosts(list);
+      // 계정을 탈퇴했거나 존재한 적 없는 userId일 수 있다 — 예전 댓글/글에 남은
+      // 작성자 링크를 통해서도 들어올 수 있으므로 무한 로딩 대신 안내가 필요하다.
+      if (!p) setNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -61,6 +66,17 @@ export default function OtherProfileScreen() {
     } catch (e) {
       await notify('오류', '차단에 실패했어요.');
     }
+  }
+
+  if (notFound) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.notFoundText}>이 사용자를 찾을 수 없어요.{'\n'}탈퇴했거나, 링크가 잘못됐을 수 있어요.</Text>
+        <TouchableOpacity style={styles.notFoundButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.notFoundButtonText}>뒤로 가기</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   if (loading || !profile) {
@@ -135,6 +151,9 @@ export default function OtherProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  notFoundText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22, paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  notFoundButton: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
+  notFoundButtonText: { color: colors.primary, fontWeight: '600' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { paddingTop: spacing.lg },
   identityRow: { flexDirection: 'row', alignItems: 'center' },
