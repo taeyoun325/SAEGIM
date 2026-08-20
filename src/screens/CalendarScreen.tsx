@@ -60,13 +60,23 @@ export default function CalendarScreen() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
 
+  const daysInMonth = useMemo(() => new Date(year, month + 1, 0).getDate(), [year, month]);
+
   const days = useMemo(() => {
     const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const cells: (number | null)[] = Array(firstDay).fill(null);
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
     return cells;
-  }, [year, month]);
+  }, [year, month, daysInMonth]);
+
+  const monthWrittenCount = useMemo(() => {
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (myWritings[promptIdFor(d)]) count++;
+    }
+    return count;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myWritings, year, month, daysInMonth]);
 
   function promptIdFor(day: number) {
     return `${year}${pad(month + 1)}${pad(day)}`;
@@ -119,7 +129,10 @@ export default function CalendarScreen() {
         >
           <Text style={styles.nav}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>{year}년 {month + 1}월</Text>
+        <View style={styles.titleCol}>
+          <Text style={styles.title}>{year}년 {month + 1}월</Text>
+          {!loading && <Text style={styles.monthSummary}>이 달에 {monthWrittenCount}일 새겼어요</Text>}
+        </View>
         <TouchableOpacity
           onPress={() => setCursor(new Date(year, month + 1, 1))}
           accessibilityRole="button"
@@ -268,7 +281,9 @@ const styles = StyleSheet.create({
   todaySection: { marginTop: spacing.lg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   nav: { fontSize: 24, color: colors.primary, paddingHorizontal: spacing.md },
+  titleCol: { alignItems: 'center' },
   title: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  monthSummary: { fontSize: 12, color: colors.textSoft, marginTop: 2 },
   weekRow: { flexDirection: 'row' },
   weekday: { flex: 1, textAlign: 'center', color: colors.textSoft, fontSize: 12, marginBottom: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
