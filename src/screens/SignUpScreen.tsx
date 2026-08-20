@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, View } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,6 +7,18 @@ import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { NICKNAME_MAX_LENGTH } from '../constants/config';
+import { getPasswordStrength, PasswordStrength, PASSWORD_STRENGTH_LABEL } from '../utils/password';
+
+const STRENGTH_COLOR: Record<PasswordStrength, string> = {
+  weak: colors.danger,
+  medium: colors.accent,
+  strong: colors.success,
+};
+const STRENGTH_FILL: Record<PasswordStrength, number> = {
+  weak: 1 / 3,
+  medium: 2 / 3,
+  strong: 1,
+};
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignUp'>;
 
@@ -62,6 +74,21 @@ export default function SignUpScreen({ navigation }: Props) {
         value={password}
         onChangeText={setPassword}
       />
+      {password.length > 0 && (
+        <View style={styles.strengthRow}>
+          <View style={styles.strengthTrack}>
+            <View
+              style={[
+                styles.strengthFill,
+                { width: `${STRENGTH_FILL[getPasswordStrength(password)] * 100}%`, backgroundColor: STRENGTH_COLOR[getPasswordStrength(password)] },
+              ]}
+            />
+          </View>
+          <Text style={[styles.strengthLabel, { color: STRENGTH_COLOR[getPasswordStrength(password)] }]}>
+            {PASSWORD_STRENGTH_LABEL[getPasswordStrength(password)]}
+          </Text>
+        </View>
+      )}
       {error && <Text style={styles.error}>{error}</Text>}
       <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>회원가입</Text>}
@@ -87,6 +114,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   error: { color: colors.danger, marginBottom: spacing.sm },
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  strengthTrack: { flex: 1, height: 4, borderRadius: radius.full, backgroundColor: colors.border, overflow: 'hidden' },
+  strengthFill: { height: '100%', borderRadius: radius.full },
+  strengthLabel: { fontSize: 12, fontWeight: '700', width: 32 },
   button: { backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   link: { color: colors.textSoft, textAlign: 'center', marginTop: spacing.lg },
