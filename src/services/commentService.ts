@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   DocumentSnapshot,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -15,13 +16,38 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Comment } from '../types/models';
-import { COMMENT_MAX_LENGTH, COMMENT_PAGE_SIZE } from '../constants/config';
+import { COMMENT_MAX_LENGTH, COMMENT_PAGE_SIZE, NICKNAME_MAX_LENGTH } from '../constants/config';
 import { adjustCommentCount, deleteDocsWhere } from './postService';
 import { bumpDailyStats } from './statsService';
 import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
 import { createNotification } from './inboxService';
 
 const commentsCol = 'comments';
+
+// "@닉네임"으로 댓글에서 다른 사람을 부를 수 있다. 닉네임은 공백을 허용하지만(validateNickname
+// 참고) 멘션은 공백 앞까지만 토큰으로 본다 — 대부분의 멘션 기능(트위터, 디스코드 등)이
+// 같은 이유로 공백 포함 이름은 지원하지 않는 것과 같다.
+const MENTION_REGEX = new RegExp(`@([가-힣a-zA-Z0-9_.]{1,${NICKNAME_MAX_LENGTH}})`, 'g');
+
+async function notifyMentions(
+  content: string,
+  postId: string,
+  commentId: string,
+  actorId: string,
+  alreadyNotified: Set<string>
+): Promise<void> {
+  const nicknames = new Set(Array.from(content.matchAll(MENTION_REGEX), (m) => m[1]));
+  if (nicknames.size === 0) return;
+  await Promise.all(
+    Array.from(nicknames).map(async (nickname) => {
+      const snap = await getDoc(doc(db, 'nicknames', nickname.trim().toLowerCase()));
+      if (!snap.exists()) return;
+      const mentionedUid = snap.data().uid as string;
+      if (mentionedUid === actorId || alreadyNotified.has(mentionedUid)) return;
+      await createNotification(mentionedUid, actorId, 'comment_mention', postId, commentId);
+    })
+  );
+}
 
 export function validateComment(content: string): { valid: boolean; reason?: string } {
   const trimmed = content.trim();
@@ -72,11 +98,15 @@ export async function addComment(
   bumpDailyStats({ commentsCount: 1 }).catch(() => {});
 
   // 답글이면 원댓글 작성자에게, 아니면 글 작성자에게 알림을 보낸다(둘 다 자기 자신이면 자동으로 건너뜀).
+  const primaryRecipient = opts.parentCommentId && opts.parentAuthorId ? opts.parentAuthorId : opts.postOwnerId;
   if (opts.parentCommentId && opts.parentAuthorId) {
     createNotification(opts.parentAuthorId, userId, 'comment_reply', postId, commentRef.id).catch(() => {});
   } else {
     createNotification(opts.postOwnerId, userId, 'post_comment', postId, commentRef.id).catch(() => {});
   }
+  // 위 알림을 이미 받은 사람(글 작성자/원댓글 작성자)을 같은 댓글로 또 언급했다면
+  // 중복 알림을 보내지 않는다.
+  notifyMentions(content, postId, commentRef.id, userId, new Set([primaryRecipient])).catch(() => {});
 
   return commentRef.id;
 }

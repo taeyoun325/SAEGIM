@@ -99,6 +99,7 @@ export type NotificationType =
   | 'post_comment'
   | 'comment_like'
   | 'comment_reply'
+  | 'comment_mention' // 댓글 안에서 "@닉네임"으로 다른 사람을 언급했다
   | 'report_resolved' // 내가 신고한 콘텐츠가 검토돼 삭제됐다
   | 'report_dismissed' // 내가 신고한 콘텐츠를 검토했지만 문제없다고 판단했다
   | 'content_removed'; // 내가 올린 콘텐츠가 신고 처리로 삭제됐다(글쓴이 본인에게 가는 알림)

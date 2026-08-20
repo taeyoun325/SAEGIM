@@ -53,6 +53,7 @@ const NOTIFICATION_TYPE_OPTIONS: { value: NotificationType; label: string }[] = 
   { value: 'post_comment', label: '내 글에 댓글' },
   { value: 'comment_like', label: '내 댓글에 좋아요' },
   { value: 'comment_reply', label: '내 댓글에 답글' },
+  { value: 'comment_mention', label: '댓글에서 나를 언급' },
 ];
 
 const REMINDER_TIME_OPTIONS: { hour: number; minute: number; label: string }[] = [
