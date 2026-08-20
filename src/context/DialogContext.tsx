@@ -104,13 +104,20 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
             )}
             <View style={styles.actions}>
               {state.mode !== 'notify' && (
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelPress}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={handleCancelPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={state.cancelLabel ?? '취소'}
+                >
                   <Text style={styles.cancelText}>{state.cancelLabel ?? '취소'}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.confirmButton, state.destructive && styles.destructiveButton]}
                 onPress={handleConfirmPress}
+                accessibilityRole="button"
+                accessibilityLabel={state.confirmLabel ?? '확인'}
               >
                 <Text style={styles.confirmText}>{state.confirmLabel ?? '확인'}</Text>
               </TouchableOpacity>

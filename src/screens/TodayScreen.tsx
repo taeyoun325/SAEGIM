@@ -367,10 +367,22 @@ export default function TodayScreen() {
           {error && <Text style={styles.error}>{error}</Text>}
 
           <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => handleSave(false)} disabled={saving}>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonOutline]}
+              onPress={() => handleSave(false)}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="새기기, 비공개로 저장"
+            >
               <Text style={styles.buttonOutlineText}>새기기</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={() => handleSave(true)} disabled={saving}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleSave(true)}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="게시하기, 공개로 저장"
+            >
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>게시하기</Text>}
             </TouchableOpacity>
           </View>
