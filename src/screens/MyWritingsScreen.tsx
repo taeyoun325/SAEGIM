@@ -116,13 +116,21 @@ export default function MyWritingsScreen() {
     }
     const topMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0];
     const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0];
-    const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0];
+    const moodEntries = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]);
+    const topMood = moodEntries[0];
+    const maxMoodCount = moodEntries[0]?.[1] ?? 0;
     return {
       total: writings.length,
       dayCount: days.size,
       topMonth: topMonth ? `${topMonth[0].replace('-', '년 ')}월` : null,
       topCategory: topCategory ? topCategory[0] : null,
       topMood: topMood ? { emoji: topMood[0], label: moodLabel(topMood[0]) } : null,
+      moodDistribution: moodEntries.map(([emoji, count]) => ({
+        emoji,
+        label: moodLabel(emoji) ?? emoji,
+        count,
+        pct: maxMoodCount > 0 ? Math.round((count / maxMoodCount) * 100) : 0,
+      })),
     };
   }, [writings]);
 
@@ -372,6 +380,20 @@ export default function MyWritingsScreen() {
                 {stats.topMood && (
                   <Text style={styles.statsLine}>가장 많이 남긴 기분 {stats.topMood.emoji} {stats.topMood.label}</Text>
                 )}
+              </View>
+            )}
+            {stats && stats.moodDistribution.length > 0 && (
+              <View style={styles.statsCard}>
+                <Text style={styles.statsHeadline}>기분 분포</Text>
+                {stats.moodDistribution.map((m) => (
+                  <View key={m.emoji} style={styles.moodBarRow}>
+                    <Text style={styles.moodBarLabel}>{m.emoji} {m.label}</Text>
+                    <View style={styles.moodBarTrack}>
+                      <View style={[styles.moodBarFill, { width: `${Math.max(4, m.pct)}%` }]} />
+                    </View>
+                    <Text style={styles.moodBarCount}>{m.count}</Text>
+                  </View>
+                ))}
               </View>
             )}
             <TextInput
@@ -658,6 +680,11 @@ const styles = StyleSheet.create({
   weekDotFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
   weekDotToday: { borderColor: colors.accent, borderWidth: 2 },
   statsCard: { backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
+  moodBarRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: spacing.sm },
+  moodBarLabel: { color: colors.text, fontSize: 12, width: 68 },
+  moodBarTrack: { flex: 1, height: 12, backgroundColor: colors.card, borderRadius: radius.full, overflow: 'hidden' },
+  moodBarFill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.primary },
+  moodBarCount: { color: colors.textSoft, fontSize: 12, width: 20, textAlign: 'right' },
   statsHeadline: { color: colors.primary, fontWeight: '700', fontSize: 15, marginBottom: spacing.xs },
   statsLine: { color: colors.text, fontSize: 13, marginTop: 2 },
   searchInput: {

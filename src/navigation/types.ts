@@ -6,6 +6,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Profile: undefined;
+  Character: undefined;
   Today: undefined;
   Feed: undefined;
   Calendar: undefined;
@@ -26,6 +27,5 @@ export type RootStackParamList = {
   MyWritings: undefined;
   SavedPosts: undefined;
   PracticeWriting: undefined;
-  Character: undefined;
   Notifications: undefined;
 };

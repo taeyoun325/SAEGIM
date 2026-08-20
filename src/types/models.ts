@@ -80,6 +80,7 @@ export interface UserProfile {
   monthlyGoal?: number | null; // 이번 달에 새기고 싶은 날짜 수(선택). 설정하지 않으면 진행률을 보여주지 않는다.
   // 개발자 서버 모드 전용 캐릭터 육성 실험 필드(관리자 계정에서만 쓰임).
   characterSpeciesId?: string | null; // 고른 알(종). null이면 아직 알을 고르지 않은 상태.
+  characterStageOverride?: number | null; // 개발자 모드 "부화/진화" 버튼으로 강제로 앞당긴 단계(0부터). 실제 writingCount보다 낮으면 무시된다.
   characterAffection?: number; // 먹이 주기로 쌓이는 애정도
   characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD, 개발자 모드에서는 무시됨)
   characterEquippedAccessoryId?: string | null;

@@ -5,13 +5,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory } from '../services/characterService';
+import TopBarButtons from '../components/TopBarButtons';
+import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory } from '../services/characterService';
 
-// 개발자 서버 모드 전용 캐릭터 육성 화면. 프로필의 "🐣 캐릭터 육성" 버튼으로 들어온다.
-// 이 화면 자체가 관리자 + 개발자 모드에서만 라우팅되므로(ProfileScreen 가드),
-// 여기서는 먹이 주기를 하루 제한 없이 무제한으로 허용하고 언제든 알을 다시 고를 수
-// 있게 한다 — 실사용자에게 낼 기능이 아니라 "글쓰기로 캐릭터가 자란다"는 아이디어
-// 자체를 눈으로 빠르게 확인해보기 위한 실험 공간이기 때문이다.
+// 개발자 서버 모드 전용 캐릭터 육성 화면. 프로필-오늘 탭 사이에 탭으로 노출된다
+// (관리자 + 개발자 모드일 때만, MainTabs에서 가드). 실사용자에게 낼 기능이 아니라
+// "글쓰기로 캐릭터가 자란다"는 아이디어 자체를 눈으로 빠르게 확인해보기 위한
+// 실험 공간이라, 먹이 주기를 무제한으로 허용하고 부화/진화도 즉시 미리 볼 수
+// 있게 하고, 언제든 알을 다시 고를 수 있다.
 export default function CharacterScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { confirm } = useDialog();
@@ -63,6 +64,17 @@ export default function CharacterScreen() {
     }
   }
 
+  async function handleEvolve() {
+    if (!user || !profile || !species || busy) return;
+    setBusy(true);
+    try {
+      await evolveCharacter(user.uid, profile, species);
+      await refreshProfile();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleEquip(accessoryId: string) {
     if (!user || equipping) return;
     setEquipping(accessoryId);
@@ -94,27 +106,30 @@ export default function CharacterScreen() {
 
   if (!species) {
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.badge}>🧪 개발자 서버 모드 실험</Text>
-        <Text style={styles.pickTitle}>키울 알을 골라주세요</Text>
-        <Text style={styles.pickHint}>알마다 깨어나는 모습도, 다 자란 모습도 완전히 달라요.</Text>
-        <View style={styles.eggGrid}>
-          {CHARACTER_SPECIES.map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              style={styles.eggCard}
-              onPress={() => handleSelectSpecies(s.id, s.eggName)}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel={`${s.eggName} 고르기, ${s.eggHint}`}
-            >
-              <Text style={styles.eggEmoji}>{s.eggEmoji}</Text>
-              <Text style={styles.eggName}>{s.eggName}</Text>
-              <Text style={styles.eggHint}>{s.eggHint}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <TopBarButtons />
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <Text style={styles.badge}>🧪 개발자 서버 모드 실험</Text>
+          <Text style={styles.pickTitle}>키울 알을 골라주세요</Text>
+          <Text style={styles.pickHint}>알마다 깨어나는 모습도, 다 자란 모습도 완전히 달라요.</Text>
+          <View style={styles.eggGrid}>
+            {CHARACTER_SPECIES.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={styles.eggCard}
+                onPress={() => handleSelectSpecies(s.id, s.eggName)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel={`${s.eggName} 고르기, ${s.eggHint}`}
+              >
+                <Text style={styles.eggEmoji}>{s.eggEmoji}</Text>
+                <Text style={styles.eggName}>{s.eggName}</Text>
+                <Text style={styles.eggHint}>{s.eggHint}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -124,9 +139,13 @@ export default function CharacterScreen() {
   const unlocked = getUnlockedAccessories(affection);
   const nextLocked = getNextLockedAccessory(affection);
   const equippedAccessory = unlocked.find((a) => a.id === equippedId);
+  const atLastStage = progress.stageIndex >= species.stages.length - 1;
+  const evolveLabel = progress.stageIndex === 0 ? '🥚 부화시키기' : `${progress.nextStage?.emoji ?? '✨'} 진화시키기`;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={{ flex: 1 }}>
+      <TopBarButtons />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.badge}>🧪 개발자 서버 모드 실험 · {species.eggName} 라인</Text>
 
       <View style={styles.emojiWrap}>
@@ -147,6 +166,17 @@ export default function CharacterScreen() {
         </>
       ) : (
         <Text style={styles.nextText}>가장 자란 모습이에요.</Text>
+      )}
+      {!atLastStage && (
+        <TouchableOpacity
+          style={styles.evolveButton}
+          onPress={handleEvolve}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={`${evolveLabel}, 실제로 그만큼 쓰지 않아도 다음 모습을 미리 봐요`}
+        >
+          <Text style={styles.evolveButtonText}>{evolveLabel}</Text>
+        </TouchableOpacity>
       )}
 
       <View style={styles.divider} />
@@ -199,7 +229,8 @@ export default function CharacterScreen() {
       >
         <Text style={styles.resetButtonText}>🔄 다른 알로 초기화</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -232,6 +263,16 @@ const styles = StyleSheet.create({
   track: { width: '100%', maxWidth: 320, height: 8, borderRadius: radius.full, backgroundColor: colors.card, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.primary },
   nextText: { color: colors.textSoft, fontSize: 12, marginTop: spacing.xs },
+  evolveButton: {
+    marginTop: spacing.md,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  evolveButtonText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   divider: { width: '100%', maxWidth: 320, height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
   affectionText: { color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: spacing.sm },
   feedButton: {
