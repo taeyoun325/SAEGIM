@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -22,6 +22,7 @@ export default function SavedPostsScreen() {
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   // 저장한 글이 쌓일수록 예전에 저장해둔 특정 글을 다시 찾기 어려워진다
   // ("저장은 쉬운데 나중에 찾기가 어렵다"는 게 북마크 기능의 흔한 약점이다).
@@ -31,13 +32,20 @@ export default function SavedPostsScreen() {
   const filtered = useMemo(() => {
     const blockedIds = profile?.blockedUserIds ?? [];
     const mutedKeywords = profile?.mutedKeywords ?? [];
-    const visible = posts.filter(
+    let visible = posts.filter(
       (p) => !blockedIds.includes(p.userId) && !matchesMutedKeyword(p.lines, mutedKeywords)
     );
+    if (categoryFilter) visible = visible.filter((p) => p.category === categoryFilter);
     const q = query.trim();
     if (!q) return visible;
     return visible.filter((p) => p.lines.some((l) => l.includes(q)));
-  }, [posts, query, profile?.blockedUserIds, profile?.mutedKeywords]);
+  }, [posts, query, categoryFilter, profile?.blockedUserIds, profile?.mutedKeywords]);
+
+  const usedCategories = useMemo(() => {
+    const set = new Set<string>();
+    posts.forEach((p) => { if (p.category) set.add(p.category); });
+    return Array.from(set).sort();
+  }, [posts]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -71,20 +79,47 @@ export default function SavedPostsScreen() {
       contentContainerStyle={styles.list}
       ListHeaderComponent={
         posts.length > 0 ? (
-          <TextInput
-            style={styles.searchInput}
-            placeholder="저장한 글 내용 검색"
-            placeholderTextColor={colors.textSoft}
-            value={query}
-            onChangeText={setQuery}
-          />
+          <View>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="저장한 글 내용 검색"
+              placeholderTextColor={colors.textSoft}
+              value={query}
+              onChangeText={setQuery}
+            />
+            {usedCategories.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+                <TouchableOpacity
+                  style={[styles.categoryChip, categoryFilter === null && styles.categoryChipActive]}
+                  onPress={() => setCategoryFilter(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="글감 카테고리 전체 보기"
+                  aria-selected={categoryFilter === null}
+                >
+                  <Text style={[styles.categoryChipText, categoryFilter === null && styles.categoryChipTextActive]}>전체 카테고리</Text>
+                </TouchableOpacity>
+                {usedCategories.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.categoryChip, categoryFilter === c && styles.categoryChipActive]}
+                    onPress={() => setCategoryFilter((prev) => (prev === c ? null : c))}
+                    accessibilityRole="button"
+                    accessibilityLabel={`글감 카테고리 ${c}만 보기`}
+                    aria-selected={categoryFilter === c}
+                  >
+                    <Text style={[styles.categoryChipText, categoryFilter === c && styles.categoryChipTextActive]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
         ) : null
       }
       ListEmptyComponent={
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
-            {query
-              ? '검색 결과가 없어요.'
+            {query || categoryFilter
+              ? '조건에 맞는 글이 없어요.'
               : posts.length > 0
                 ? '저장한 글이 모두 차단했거나 뮤트한 내용이라 보이지 않아요.'
                 : '저장한 글이 없어요.\n마음에 드는 글을 저장해보세요.'}
@@ -117,6 +152,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     color: colors.text,
   },
+  categoryRow: { gap: spacing.xs, marginBottom: spacing.md },
+  categoryChip: {
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
+  categoryChipTextActive: { color: '#fff' },
   empty: { paddingVertical: spacing.xl, alignItems: 'center' },
   emptyText: { color: colors.textSoft, textAlign: 'center', lineHeight: 22 },
 });
