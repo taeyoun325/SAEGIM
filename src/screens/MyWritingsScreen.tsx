@@ -41,6 +41,7 @@ export default function MyWritingsScreen() {
   const [query, setQuery] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [moodFilter, setMoodFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<Writing | null>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -70,14 +71,21 @@ export default function MyWritingsScreen() {
     let list = writings;
     if (favoritesOnly) list = list.filter((w) => w.favorited);
     if (moodFilter) list = list.filter((w) => w.mood === moodFilter);
+    if (categoryFilter) list = list.filter((w) => w.category === categoryFilter);
     if (q) list = list.filter((w) => w.lines.some((l) => l.includes(q)));
     return list;
-  }, [writings, query, favoritesOnly, moodFilter]);
+  }, [writings, query, favoritesOnly, moodFilter, categoryFilter]);
 
   const usedMoods = useMemo(
     () => MOOD_OPTIONS.filter((m) => writings.some((w) => w.mood === m.emoji)),
     [writings]
   );
+
+  const usedCategories = useMemo(() => {
+    const set = new Set<string>();
+    writings.forEach((w) => { if (w.category) set.add(w.category); });
+    return Array.from(set).sort();
+  }, [writings]);
 
   async function handleToggleFavorite(writing: Writing) {
     const next = !writing.favorited;
@@ -389,12 +397,39 @@ export default function MyWritingsScreen() {
                 ))}
               </ScrollView>
             )}
+            {usedCategories.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moodFilterRow}>
+                <TouchableOpacity
+                  style={[styles.moodFilterChip, categoryFilter === null && styles.moodFilterChipActive]}
+                  onPress={() => setCategoryFilter(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="글감 카테고리 전체 보기"
+                  aria-selected={categoryFilter === null}
+                >
+                  <Text style={[styles.moodFilterChipText, categoryFilter === null && styles.moodFilterChipTextActive]}>전체 카테고리</Text>
+                </TouchableOpacity>
+                {usedCategories.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.moodFilterChip, categoryFilter === c && styles.moodFilterChipActive]}
+                    onPress={() => setCategoryFilter((prev) => (prev === c ? null : c))}
+                    accessibilityRole="button"
+                    accessibilityLabel={`글감 카테고리 ${c}만 보기`}
+                    aria-selected={categoryFilter === c}
+                  >
+                    <Text style={[styles.moodFilterChipText, categoryFilter === c && styles.moodFilterChipTextActive]}>
+                      {c}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
-              {query || favoritesOnly || moodFilter ? '조건에 맞는 글이 없어요.' : '아직 새긴 생각이 없어요.'}
+              {query || favoritesOnly || moodFilter || categoryFilter ? '조건에 맞는 글이 없어요.' : '아직 새긴 생각이 없어요.'}
             </Text>
           </View>
         }
