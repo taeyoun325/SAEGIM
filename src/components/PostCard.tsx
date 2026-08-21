@@ -8,6 +8,7 @@ import { toggleLike, hasLiked } from '../services/likeService';
 import { useAuth } from '../context/AuthContext';
 import { useShare } from '../context/ShareContext';
 import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 interface Props {
   post: Post;
@@ -38,6 +39,7 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment,
   const lastTapRef = useRef(0);
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     getDisplayProfile(post.userId).then((p) => setNickname(p?.nickname ?? '알 수 없음'));
@@ -82,6 +84,9 @@ export default function PostCard({ post, onPress, onPressAuthor, onPressComment,
   }
 
   function playHeartAnim() {
+    // "동작 줄이기"를 켠 사용자에게는 화면 중앙에서 커졌다 작아지는 큰 움직임을
+    // 보여주지 않는다 — 좋아요 자체는 옆 버튼 아이콘 변화로 이미 알 수 있다.
+    if (reducedMotion) return;
     heartAnim.setValue(0);
     Animated.sequence([
       Animated.spring(heartAnim, { toValue: 1, useNativeDriver: true, friction: 4 }),
