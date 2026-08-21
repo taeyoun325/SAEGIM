@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Text from '../components/Text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,7 @@ import { formatDisplayDate, timestampToDateString, todayDateString } from '../ut
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile } = useAuth();
   const { prompt, notify } = useDialog();
   const navigation = useNavigation<Nav>();
@@ -153,7 +155,7 @@ export default function ProfileScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: spacing.lg + insets.top }]}>
             <View style={styles.identityRow}>
               <TouchableOpacity
                 onPress={handlePickImage}

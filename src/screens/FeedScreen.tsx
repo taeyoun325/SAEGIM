@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import Text from '../components/Text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../constants/theme';
@@ -19,6 +20,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 type TabNav = NativeStackNavigationProp<MainTabParamList>;
 
 export default function FeedScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const tabNavigation = useNavigation<TabNav>();
   const { user, profile } = useAuth();
@@ -110,7 +112,7 @@ export default function FeedScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <TopBarButtons />
       {prompt && (
         <View style={styles.header}>
