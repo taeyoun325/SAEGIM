@@ -1,7 +1,7 @@
 import { CHARACTER_SPECIES, CharacterSpecies, SpeciesStage, findSpecies } from '../constants/characterSpecies';
 import { CHARACTER_ACCESSORIES, CharacterAccessoryDef } from '../constants/characterAccessories';
 import { UserProfile } from '../types/models';
-import { updateUserProfile } from './userService';
+import { updateUserProfile, markSpeciesObtained } from './userService';
 import { todayDateString } from '../utils/date';
 
 export { CHARACTER_SPECIES, findSpecies };
@@ -76,7 +76,16 @@ export async function evolveCharacter(
   }
   const current = getSpeciesProgress(profile, species);
   if (current.stageIndex >= naturalStageIndex) return;
-  await updateUserProfile(uid, { characterStageOverride: current.stageIndex + 1 });
+  const nextStageIndex = current.stageIndex + 1;
+  await updateUserProfile(uid, { characterStageOverride: nextStageIndex });
+  // 마지막 단계까지 자라면 도감에 그 종을 영구히 기록한다 — 이후 초기화해도 지워지지 않는다.
+  if (nextStageIndex === species.stages.length - 1) {
+    await markSpeciesObtained(uid, species.id);
+  }
+}
+
+export function getObtainedSpeciesIds(profile: Pick<UserProfile, 'characterObtainedSpeciesIds'>): string[] {
+  return profile.characterObtainedSpeciesIds ?? [];
 }
 
 // 알을 고르면 그 순간부터 성장이 시작된다(이미 있는 writingCount로 바로 몇 단계

@@ -6,7 +6,9 @@ import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import TopBarButtons from '../components/TopBarButtons';
-import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory, canFeedToday } from '../services/characterService';
+import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory, canFeedToday, getObtainedSpeciesIds } from '../services/characterService';
+
+type CharacterTab = 'raise' | 'dex';
 
 // "새김"을 계속할수록 함께 자라는 캐릭터. 프로필-오늘 탭 사이에 탭으로 노출된다.
 export default function CharacterScreen() {
@@ -14,6 +16,7 @@ export default function CharacterScreen() {
   const { confirm, notify } = useDialog();
   const [busy, setBusy] = useState(false);
   const [equipping, setEquipping] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<CharacterTab>('raise');
 
   useFocusEffect(
     useCallback(() => {
@@ -110,10 +113,70 @@ export default function CharacterScreen() {
     }
   }
 
-  if (!species) {
-    return (
-      <View style={{ flex: 1 }}>
-        <TopBarButtons />
+  const progress = species ? getSpeciesProgress(profile, species) : null;
+  const affection = profile.characterAffection ?? 0;
+  const equippedId = profile.characterEquippedAccessoryId ?? 'none';
+  const unlocked = getUnlockedAccessories(affection);
+  const nextLocked = getNextLockedAccessory(affection);
+  const equippedAccessory = unlocked.find((a) => a.id === equippedId);
+  const canFeed = canFeedToday(profile);
+  const evolveLabel =
+    progress && progress.stageIndex === 0 ? '🥚 부화시키기' : `${progress?.nextStage?.emoji ?? '✨'} 진화시키기`;
+  const obtainedIds = getObtainedSpeciesIds(profile);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <TopBarButtons />
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'raise' && styles.tabActive]}
+          onPress={() => setActiveTab('raise')}
+          accessibilityRole="button"
+          accessibilityLabel="키우기 보기"
+          aria-selected={activeTab === 'raise'}
+        >
+          <Text style={[styles.tabText, activeTab === 'raise' && styles.tabTextActive]}>키우기</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'dex' && styles.tabActive]}
+          onPress={() => setActiveTab('dex')}
+          accessibilityRole="button"
+          accessibilityLabel="도감 보기"
+          aria-selected={activeTab === 'dex'}
+        >
+          <Text style={[styles.tabText, activeTab === 'dex' && styles.tabTextActive]}>
+            도감 {obtainedIds.length}/{CHARACTER_SPECIES.length}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'dex' ? (
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <Text style={styles.pickHint}>글을 새기며 캐릭터를 끝까지 키우면 도감에 기록돼요.</Text>
+          <View style={styles.dexGrid}>
+            {CHARACTER_SPECIES.map((s) => {
+              const obtained = obtainedIds.includes(s.id);
+              const finalStage = s.stages[s.stages.length - 1];
+              return (
+                <View key={s.id} style={styles.dexCard}>
+                  <View style={styles.dexSpriteFrame}>
+                    {finalStage.sprite ? (
+                      <Image
+                        source={finalStage.sprite}
+                        style={[styles.dexSprite, !obtained && styles.dexSpriteSilhouette]}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.dexEmoji}>{obtained ? finalStage.emoji : '❔'}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.dexName}>{obtained ? finalStage.label : '???'}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      ) : !species ? (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
           <Text style={styles.pickTitle}>키울 알을 골라주세요</Text>
           <Text style={styles.pickHint}>알마다 깨어나는 모습도, 다 자란 모습도 완전히 달라요.</Text>
@@ -134,36 +197,21 @@ export default function CharacterScreen() {
             ))}
           </View>
         </ScrollView>
-      </View>
-    );
-  }
-
-  const progress = getSpeciesProgress(profile, species);
-  const affection = profile.characterAffection ?? 0;
-  const equippedId = profile.characterEquippedAccessoryId ?? 'none';
-  const unlocked = getUnlockedAccessories(affection);
-  const nextLocked = getNextLockedAccessory(affection);
-  const equippedAccessory = unlocked.find((a) => a.id === equippedId);
-  const canFeed = canFeedToday(profile);
-  const evolveLabel = progress.stageIndex === 0 ? '🥚 부화시키기' : `${progress.nextStage?.emoji ?? '✨'} 진화시키기`;
-
-  return (
-    <View style={{ flex: 1 }}>
-      <TopBarButtons />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      ) : (
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.badge}>{species.eggName} 라인</Text>
 
       <View style={styles.emojiWrap}>
-        {progress.stage.sprite ? (
+        {progress!.stage.sprite ? (
           <View style={styles.spriteFrame}>
-            <Image source={progress.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
-            {equippedAccessory?.emoji && progress.stage.accessoryAnchor ? (
+            <Image source={progress!.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
+            {equippedAccessory?.emoji && progress!.stage.accessoryAnchor ? (
               <Text
                 style={[
                   styles.accessoryOnHead,
                   {
-                    left: `${progress.stage.accessoryAnchor[0]}%`,
-                    top: `${progress.stage.accessoryAnchor[1]}%`,
+                    left: `${progress!.stage.accessoryAnchor[0]}%`,
+                    top: `${progress!.stage.accessoryAnchor[1]}%`,
                   },
                 ]}
               >
@@ -173,27 +221,27 @@ export default function CharacterScreen() {
           </View>
         ) : (
           <>
-            <Text style={styles.emoji}>{progress.stage.emoji}</Text>
+            <Text style={styles.emoji}>{progress!.stage.emoji}</Text>
             {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
           </>
         )}
       </View>
-      <Text style={styles.stageLabel}>{progress.stage.label}</Text>
-      <Text style={styles.countText}>지금까지 새긴 생각 {progress.writingCount}개</Text>
-      {progress.nextStage ? (
+      <Text style={styles.stageLabel}>{progress!.stage.label}</Text>
+      <Text style={styles.countText}>지금까지 새긴 생각 {progress!.writingCount}개</Text>
+      {progress!.nextStage ? (
         <>
           <View style={styles.track}>
-            <View style={[styles.fill, { width: `${progress.progressToNext * 100}%` }]} />
+            <View style={[styles.fill, { width: `${progress!.progressToNext * 100}%` }]} />
           </View>
           <Text style={styles.nextText}>
-            다음 단계 {progress.nextStage.emoji} {progress.nextStage.label}까지{' '}
-            {Math.max(0, progress.nextStage.minWritingCount - progress.writingCount)}개
+            다음 단계 {progress!.nextStage.emoji} {progress!.nextStage.label}까지{' '}
+            {Math.max(0, progress!.nextStage.minWritingCount - progress!.writingCount)}개
           </Text>
         </>
       ) : (
         <Text style={styles.nextText}>가장 자란 모습이에요.</Text>
       )}
-      {progress.readyToEvolve && (
+      {progress!.readyToEvolve && (
         <TouchableOpacity
           style={styles.evolveButton}
           onPress={handleEvolve}
@@ -256,6 +304,7 @@ export default function CharacterScreen() {
         <Text style={styles.resetButtonText}>🔄 다른 알로 초기화</Text>
       </TouchableOpacity>
       </ScrollView>
+      )}
     </View>
   );
 }
@@ -264,6 +313,35 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xl, alignItems: 'center' },
+  tabRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
+  tabTextActive: { color: '#fff' },
+  dexGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
+  dexCard: {
+    width: 100,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    alignItems: 'center',
+  },
+  dexSpriteFrame: { width: 64, height: 64, alignItems: 'center', justifyContent: 'center' },
+  dexSprite: { width: 64, height: 64 },
+  dexSpriteSilhouette: { tintColor: '#000000', opacity: 0.55 },
+  dexEmoji: { fontSize: 36, opacity: 0.55 },
+  dexName: { fontSize: 12, fontWeight: '700', color: colors.text, marginTop: spacing.xs, textAlign: 'center' },
   badge: { color: colors.textSoft, fontSize: 11, fontWeight: '700', marginBottom: spacing.md, textAlign: 'center' },
   pickTitle: { fontSize: 20, fontWeight: '800', color: colors.primary, marginBottom: spacing.xs },
   pickHint: { color: colors.textSoft, fontSize: 13, marginBottom: spacing.lg, textAlign: 'center' },

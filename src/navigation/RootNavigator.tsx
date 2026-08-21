@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
-import { colors, getIsDarkMode } from '../constants/theme';
+import { colors } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { isAppLockEnabled } from '../services/appLockService';
 import AppLockScreen from '../components/AppLockScreen';
@@ -30,13 +30,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // 시작화면이 깜빡이고 사라지지 않도록 최소 노출 시간을 둔다.
 const MIN_SPLASH_MS = 1600;
 
-// 스택 헤더/화면 배경은 React Navigation이 자기 테마로 칠하므로,
-// 앱 색 토큰을 넘겨줘야 다크모드에서 헤더만 하얗게 남지 않는다.
-const base = getIsDarkMode() ? DarkTheme : DefaultTheme;
 const navigationTheme = {
-  ...base,
+  ...DefaultTheme,
   colors: {
-    ...base.colors,
+    ...DefaultTheme.colors,
     background: colors.background,
     card: colors.card,
     text: colors.text,

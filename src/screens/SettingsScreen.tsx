@@ -5,8 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth, REAUTH_REQUIRED } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
-import { colors, spacing, radius, fonts, ThemePreference, FontScalePreference, FONT_SCALE_VALUES } from '../constants/theme';
-import { loadThemePreference, saveThemePreference, canReloadForTheme, reloadForTheme } from '../services/themeService';
+import { colors, spacing, radius, fonts, FontScalePreference, FONT_SCALE_VALUES } from '../constants/theme';
 import { useFontScale } from '../context/FontScaleContext';
 import {
   isReminderEnabled,
@@ -29,12 +28,6 @@ import { RootStackParamList } from '../navigation/types';
 import BackgroundMascot from '../components/BackgroundMascot';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-
-const THEME_OPTIONS: { value: ThemePreference; label: string; emoji: string }[] = [
-  { value: 'system', label: '기기 설정', emoji: '📱' },
-  { value: 'light', label: '라이트', emoji: '☀️' },
-  { value: 'dark', label: '다크', emoji: '🌙' },
-];
 
 const FONT_SCALE_OPTIONS: { value: FontScalePreference; label: string }[] = [
   { value: 'small', label: '작게' },
@@ -80,14 +73,12 @@ export default function SettingsScreen() {
   const [reminderOn, setReminderOn] = useState(false);
   const [reminderTime, setReminderTimeState] = useState<ReminderTime>({ hour: 20, minute: 0 });
   const [admin, setAdmin] = useState(false);
-  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
   const { preference: fontScalePreference, setPreference: setFontScalePreference } = useFontScale();
   const [resendingVerification, setResendingVerification] = useState(false);
   const [appLockOn, setAppLockOn] = useState(false);
   const isGuestAccount = !!user?.email?.endsWith(GUEST_EMAIL_DOMAIN);
 
   useEffect(() => {
-    loadThemePreference().then(setThemePreference);
     isAppLockEnabled().then(setAppLockOn);
   }, []);
 
@@ -113,18 +104,6 @@ export default function SettingsScreen() {
     } finally {
       setResendingVerification(false);
     }
-  }
-
-  async function changeTheme(next: ThemePreference) {
-    if (next === themePreference) return;
-    setThemePreference(next);
-    await saveThemePreference(next);
-    // 이미 만들어진 스타일에는 색이 구워져 있어 화면을 처음부터 다시 그려야 반영된다.
-    if (canReloadForTheme) {
-      reloadForTheme();
-      return;
-    }
-    await notify('테마를 저장했어요', '앱을 다시 시작하면 새 테마로 열려요.');
   }
 
   async function handleSetMonthlyGoal(value: number | null) {
@@ -361,33 +340,6 @@ export default function SettingsScreen() {
               </View>
             );
           })}
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.categorySection}>
-          <Text style={styles.rowButtonText}>화면 테마</Text>
-          <Text style={styles.categoryHint}>
-            {canReloadForTheme ? '고르면 바로 적용돼요.' : '고른 테마는 앱을 다시 시작할 때 적용돼요.'}
-          </Text>
-          <View style={styles.themeRow}>
-            {THEME_OPTIONS.map((option) => {
-              const selected = themePreference === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[styles.themeChip, selected && styles.themeChipSelected]}
-                  onPress={() => changeTheme(option.value)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`화면 테마 ${option.label}`}
-                  aria-selected={selected}
-                >
-                  <Text style={styles.themeEmoji}>{option.emoji}</Text>
-                  <Text style={[styles.themeChipText, selected && styles.themeChipTextSelected]}>{option.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
       </View>
 
@@ -643,7 +595,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   themeChipSelected: { backgroundColor: colors.accentSoft, borderColor: colors.primary },
-  themeEmoji: { fontSize: 18 },
   fontScalePreviewText: { fontFamily: fonts.regular, color: colors.textSoft },
   themeChipText: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
   themeChipTextSelected: { color: colors.primary },

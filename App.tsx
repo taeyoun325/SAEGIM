@@ -1,12 +1,9 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useFonts, Jua_400Regular } from '@expo-google-fonts/jua';
 import { View, ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { colors, applyThemePreference } from './src/constants/theme';
-import { loadThemePreference } from './src/services/themeService';
+import { colors } from './src/constants/theme';
 import { useIsWideWeb } from './src/hooks/useResponsive';
 
-// 화면들이 StyleSheet를 만들 때 이미 선택된 팔레트를 쓰도록,
-// 저장된 테마 설정을 읽어 적용한 "뒤에" 앱 본체를 불러온다.
 const AppShell = lazy(() => import('./src/AppShell'));
 
 // 폰트가 아무리 느려도 이 시간이 지나면 앱을 띄운다.
@@ -23,17 +20,7 @@ const WAIT_FOR_FONTS = Platform.OS !== 'web';
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({ Jua_400Regular });
   const [fontTimedOut, setFontTimedOut] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
   const isWideWeb = useIsWideWeb();
-
-  useEffect(() => {
-    loadThemePreference()
-      .then((preference) => applyThemePreference(preference))
-      .catch(() => {
-        // 설정을 못 읽으면 기기 설정을 그대로 따른다.
-      })
-      .finally(() => setThemeReady(true));
-  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) return;
@@ -47,9 +34,8 @@ export default function App() {
 
   // 폰트 로딩 실패나 지연은 치명적이지 않다. 앱은 반드시 뜬다.
   const fontSettled = fontsLoaded || !!fontError || fontTimedOut;
-  const ready = themeReady && (!WAIT_FOR_FONTS || fontSettled);
+  const ready = !WAIT_FOR_FONTS || fontSettled;
 
-  // colors는 내용이 교체되는 객체라, 렌더 시점에 읽어야 선택된 테마가 반영된다.
   const frameStyle = [useNarrowFrame ? styles.phoneFrame : styles.fill, { backgroundColor: colors.background }];
 
   if (!ready) {

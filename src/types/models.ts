@@ -84,6 +84,7 @@ export interface UserProfile {
   characterAffection?: number; // 먹이 주기로 쌓이는 애정도
   characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD)
   characterEquippedAccessoryId?: string | null;
+  characterObtainedSpeciesIds?: string[]; // 마지막 단계까지 키워본 적 있는 종 id 목록(도감용, 초기화해도 지워지지 않는다)
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

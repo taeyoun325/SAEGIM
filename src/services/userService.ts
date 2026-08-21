@@ -86,6 +86,10 @@ export async function blockUser(uid: string, targetUid: string): Promise<void> {
   await updateDoc(doc(db, usersCol, uid), { blockedUserIds: arrayUnion(targetUid) });
 }
 
+export async function markSpeciesObtained(uid: string, speciesId: string): Promise<void> {
+  await updateDoc(doc(db, usersCol, uid), { characterObtainedSpeciesIds: arrayUnion(speciesId) });
+}
+
 export async function unblockUser(uid: string, targetUid: string): Promise<void> {
   await updateDoc(doc(db, usersCol, uid), { blockedUserIds: arrayRemove(targetUid) });
 }
