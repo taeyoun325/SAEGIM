@@ -10,7 +10,8 @@
     "backgroundColor": "#FFFBF5",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.saegimsemi.saegim"
+      "bundleIdentifier": "com.saegimsemi.saegim",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.saegimsemi.saegim",
@@ -21,7 +22,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -51,6 +55,11 @@
           "photosPermission": "프로필 사진을 선택하기 위해 사진 라이브러리에 접근합니다."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "145d7ca3-96dc-4a40-bd7d-61c3feb3b459"
+      }
+    }
   }
 }

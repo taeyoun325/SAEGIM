@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Text from './Text';
 import { spacing, radius, fonts } from '../constants/theme';
@@ -42,7 +42,6 @@ const ShareCard = forwardRef<View, Props>(({ lines, createdAt, theme = DEFAULT_S
         </View>
 
         <View style={styles.footer}>
-          {theme.showMascot && <Image source={require('../assets/mascot-share.png')} style={styles.mascot} resizeMode="contain" />}
           <View style={styles.footerText}>
             <Text style={[styles.date, { color: theme.textColor }]}>{formatDisplayDate(timestampToDateString(createdAt))}</Text>
             {/* URL은 작은 글자라 강조색 대신 본문색을 옅게 써서 대비를 확보한다. */}
@@ -77,7 +76,6 @@ const styles = StyleSheet.create({
   quote: { fontSize: 40, fontWeight: '800', marginBottom: spacing.xs, opacity: 0.55 },
   line: { fontFamily: fonts.regular },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mascot: { width: 56, height: 56 },
   footerText: { alignItems: 'flex-end', marginLeft: 'auto' },
   date: { fontSize: 13, opacity: 0.7 },
   url: { fontSize: 11, marginTop: 2, fontWeight: '600', opacity: 0.9 },

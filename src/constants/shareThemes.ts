@@ -15,7 +15,6 @@ export interface ShareTheme {
   accentColor: string;
   // 본문 뒤에 아주 옅게 깔리는 장식 원. 카드가 비어 보이지 않게 해준다.
   blobColor: string;
-  showMascot: boolean;
   showQuoteMarks: boolean;
 }
 
@@ -38,7 +37,6 @@ export const SHARE_THEMES: ShareTheme[] = [
     textColor: '#3A3129',
     accentColor: '#96602D',
     blobColor: '#F0D2B4',
-    showMascot: true,
     showQuoteMarks: false,
   },
   {
@@ -49,7 +47,6 @@ export const SHARE_THEMES: ShareTheme[] = [
     textColor: '#1B1B1F',
     accentColor: '#5F656E',
     blobColor: '#E8EAEE',
-    showMascot: false,
     showQuoteMarks: false,
   },
   {
@@ -59,7 +56,6 @@ export const SHARE_THEMES: ShareTheme[] = [
     textColor: '#5B3A2E',
     accentColor: '#A2503A',
     blobColor: '#F2B9A4',
-    showMascot: true,
     showQuoteMarks: true,
   },
   {
@@ -70,7 +66,6 @@ export const SHARE_THEMES: ShareTheme[] = [
     textColor: '#F3EFE8',
     accentColor: '#E0B778',
     blobColor: '#3A4560',
-    showMascot: true,
     showQuoteMarks: false,
   },
   {
@@ -80,7 +75,6 @@ export const SHARE_THEMES: ShareTheme[] = [
     textColor: '#33302B',
     accentColor: seasonal.accent,
     blobColor: seasonal.blob,
-    showMascot: true,
     showQuoteMarks: false,
   },
 ];
