@@ -3,8 +3,9 @@
 // 알마다 완전히 다른 성장 라인을 가진다 — 깨어나는 모습도, 다 자란 성체도 다르다.
 // 동물뿐 아니라 정령·몬스터·기계·날씨처럼 상상 속 존재도 섞어 고르는 재미를 준다.
 //
-// 스프라이트 대신 이모지를 쓰는 이유와 조사해둔 무료(CC0) 자산 출처는
-// constants/characterGrowth.ts 상단 주석 참고.
+// 1~5단계 스프라이트는 "50+ Monsters Pack 2D" (isaiah658, CC0 — 저작자 표시도
+// 필요 없음, https://opengameart.org/content/50-monsters-pack-2d) 중 동글동글하고
+// 귀여운 디자인만 골라 쓴다. 0단계(알)는 그대로 이모지를 쓴다.
 
 import { STAGE_THRESHOLDS } from './characterGrowth';
 
@@ -12,6 +13,7 @@ export interface SpeciesStage {
   emoji: string;
   label: string;
   minWritingCount: number;
+  sprite?: number; // require()된 이미지. 0단계(알)에는 없다.
 }
 
 export interface CharacterSpecies {
@@ -23,10 +25,11 @@ export interface CharacterSpecies {
 }
 
 // 각 종의 단계 이름만 받아 임계값을 붙여준다(모든 종이 같은 속도로 자란다).
-function buildStages(entries: [string, string][]): SpeciesStage[] {
-  return entries.map(([emoji, label], i) => ({
+function buildStages(entries: [string, string, number?][]): SpeciesStage[] {
+  return entries.map(([emoji, label, sprite], i) => ({
     emoji,
     label,
+    sprite,
     minWritingCount: STAGE_THRESHOLDS[i],
   }));
 }
@@ -39,11 +42,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '평범해 보이지만 가장 따뜻해요',
     stages: buildStages([
       ['🥚', '흰 알'],
-      ['🐣', '갓 깨어난 아이'],
-      ['🐤', '노란 병아리'],
-      ['🐔', '늠름한 닭'],
-      ['🦃', '위풍당당'],
-      ['🦚', '화려한 공작'],
+      ['🐣', '포근한 솜털', require('../assets/creatures/chick-1.png')],
+      ['🐝', '작은 꿀벌', require('../assets/creatures/chick-2.png')],
+      ['🐞', '행운의 무당벌레', require('../assets/creatures/chick-3.png')],
+      ['🐥', '복슬복슬 털뭉치', require('../assets/creatures/chick-4.png')],
+      ['🦉', '지혜로운 부엉이', require('../assets/creatures/chick-5.png')],
     ]),
   },
   {
@@ -53,11 +56,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '안에서 별빛이 새어 나와요',
     stages: buildStages([
       ['🔮', '수정 알'],
-      ['🐱', '별빛 고양이'],
-      ['🦉', '지혜의 부엉이'],
-      ['🦊', '아홉 꼬리 여우'],
-      ['🦌', '별빛 사슴'],
-      ['🦄', '별의 수호자'],
+      ['🐱', '별빛 고양이', require('../assets/creatures/star-1.png')],
+      ['🦊', '별빛 여우', require('../assets/creatures/star-2.png')],
+      ['🦉', '지혜의 부엉이', require('../assets/creatures/star-3.png')],
+      ['🐉', '별빛 이무기', require('../assets/creatures/star-4.png')],
+      ['🦄', '별의 수호자', require('../assets/creatures/star-5.png')],
     ]),
   },
   {
@@ -67,11 +70,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '숲의 냄새가 나요',
     stages: buildStages([
       ['🌰', '씨앗 알'],
-      ['🌱', '새싹'],
-      ['🌿', '어린 덩굴'],
-      ['🌳', '큰 나무'],
-      ['🧚', '숲의 요정'],
-      ['🧝', '숲의 수호자'],
+      ['🌸', '작은 꽃봉오리', require('../assets/creatures/forest-1.png')],
+      ['💧', '이슬 정령', require('../assets/creatures/forest-2.png')],
+      ['🍃', '잎사귀 요정', require('../assets/creatures/forest-3.png')],
+      ['🐸', '숲속 개구리', require('../assets/creatures/forest-4.png')],
+      ['🐢', '숲의 수호거북', require('../assets/creatures/forest-5.png')],
     ]),
   },
   {
@@ -81,11 +84,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '만지면 찰랑거려요',
     stages: buildStages([
       ['🫧', '물방울 알'],
-      ['🐟', '작은 물고기'],
-      ['🐠', '열대어'],
-      ['🐡', '복어'],
-      ['🐬', '돌고래'],
-      ['🐋', '고래'],
+      ['🐟', '작은 올챙이', require('../assets/creatures/ocean-1.png')],
+      ['🐠', '빨간 물고기', require('../assets/creatures/ocean-2.png')],
+      ['⭐', '산호 불가사리', require('../assets/creatures/ocean-3.png')],
+      ['🐙', '꽃문어', require('../assets/creatures/ocean-4.png')],
+      ['🐬', '푸른 돌고래', require('../assets/creatures/ocean-5.png')],
     ]),
   },
   {
@@ -95,11 +98,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '이상하게 뜨거워요',
     stages: buildStages([
       ['🪨', '돌 알'],
-      ['🦎', '도마뱀'],
-      ['🐍', '뱀'],
-      ['🐊', '악어'],
-      ['🐲', '아기 용'],
-      ['🐉', '용'],
+      ['🦎', '아기 공룡', require('../assets/creatures/dragon-1.png')],
+      ['🐊', '황금 새끼공룡', require('../assets/creatures/dragon-2.png')],
+      ['🐲', '점박이 공룡', require('../assets/creatures/dragon-3.png')],
+      ['🐉', '청록 공룡', require('../assets/creatures/dragon-4.png')],
+      ['🦕', '푸른 거대공룡', require('../assets/creatures/dragon-5.png')],
     ]),
   },
   {
@@ -109,11 +112,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '손이 시려요',
     stages: buildStages([
       ['🧊', '얼음 알'],
-      ['❄️', '눈송이'],
-      ['⛄', '눈사람'],
-      ['🐧', '펭귄'],
-      ['🦭', '바다표범'],
-      ['🦣', '털매머드'],
+      ['❄️', '파란 눈덩이', require('../assets/creatures/frost-1.png')],
+      ['☁️', '하얀 구름양', require('../assets/creatures/frost-2.png')],
+      ['🐱', '하얀 눈고양이', require('../assets/creatures/frost-3.png')],
+      ['🦈', '빙하 상어', require('../assets/creatures/frost-4.png')],
+      ['🦣', '털매머드', require('../assets/creatures/frost-5.png')],
     ]),
   },
   {
@@ -123,11 +126,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '안에서 톱니 소리가 나요',
     stages: buildStages([
       ['⚙️', '금속 알'],
-      ['🔩', '나사 뭉치'],
-      ['🤖', '꼬마 로봇'],
-      ['🦾', '강화 로봇'],
-      ['🦿', '강철 짐승'],
-      ['🦖', '기계 공룡'],
+      ['🤖', '꼬마 탐사로봇', require('../assets/creatures/robot-1.png')],
+      ['🛡️', '장갑 로봇', require('../assets/creatures/robot-2.png')],
+      ['⚙️', '톱니 로봇', require('../assets/creatures/robot-3.png')],
+      ['🦾', '집게팔 로봇', require('../assets/creatures/robot-4.png')],
+      ['🗿', '로봇 골렘', require('../assets/creatures/robot-5.png')],
     ]),
   },
   {
@@ -137,11 +140,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '조금 수상해요',
     stages: buildStages([
       ['🍄', '포자 알'],
-      ['👾', '작은 몬스터'],
-      ['🧌', '트롤'],
-      ['👹', '도깨비'],
-      ['👺', '붉은 요괴'],
-      ['🗿', '거대 석상'],
+      ['🟢', '초록 포자', require('../assets/creatures/spore-1.png')],
+      ['🐌', '포자 달팽이', require('../assets/creatures/spore-2.png')],
+      ['🍄', '버섯 요정', require('../assets/creatures/spore-3.png')],
+      ['🐙', '곰팡이 정령', require('../assets/creatures/spore-4.png')],
+      ['🥊', '장난꾸러기 복서', require('../assets/creatures/spore-5.png')],
     ]),
   },
   {
@@ -151,11 +154,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '밤에만 움직여요',
     stages: buildStages([
       ['🌙', '그믐 알'],
-      ['👻', '꼬마 유령'],
-      ['🦇', '박쥐'],
-      ['🐺', '늑대'],
-      ['🧛', '뱀파이어'],
-      ['🌚', '밤의 주인'],
+      ['👻', '꼬마 유령', require('../assets/creatures/night-1.png')],
+      ['🦇', '박쥐', require('../assets/creatures/night-2.png')],
+      ['🦝', '밤의 너구리', require('../assets/creatures/night-3.png')],
+      ['🐦‍⬛', '검은 까마귀', require('../assets/creatures/night-4.png')],
+      ['🐍', '밤의 뱀', require('../assets/creatures/night-5.png')],
     ]),
   },
   {
@@ -165,11 +168,11 @@ export const CHARACTER_SPECIES: CharacterSpecies[] = [
     eggHint: '둥실 떠 있어요',
     stages: buildStages([
       ['☁️', '구름 알'],
-      ['🐦', '아기 바람새'],
-      ['🦜', '무지개새'],
-      ['🦢', '폭풍 백조'],
-      ['🦅', '천둥매'],
-      ['🐦‍🔥', '폭풍 불사조'],
+      ['🐛', '작은 애벌레', require('../assets/creatures/sky-1.png')],
+      ['🐛', '노랑 애벌레', require('../assets/creatures/sky-2.png')],
+      ['🐞', '무당벌레', require('../assets/creatures/sky-3.png')],
+      ['☁️', '하얀 구름양', require('../assets/creatures/sky-4.png')],
+      ['🐋', '보랏빛 하늘고래', require('../assets/creatures/sky-5.png')],
     ]),
   },
 ];

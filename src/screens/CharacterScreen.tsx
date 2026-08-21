@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import Text from '../components/Text';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
@@ -159,7 +159,11 @@ export default function CharacterScreen() {
       <Text style={styles.badge}>🧪 개발자 서버 모드 실험 · {species.eggName} 라인</Text>
 
       <View style={styles.emojiWrap}>
-        <Text style={styles.emoji}>{progress.stage.emoji}</Text>
+        {progress.stage.sprite ? (
+          <Image source={progress.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
+        ) : (
+          <Text style={styles.emoji}>{progress.stage.emoji}</Text>
+        )}
         {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
       </View>
       <Text style={styles.stageLabel}>{progress.stage.label}</Text>
@@ -267,6 +271,7 @@ const styles = StyleSheet.create({
   eggHint: { fontSize: 11, color: colors.textSoft, marginTop: 2, textAlign: 'center' },
   emojiWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   emoji: { fontSize: 64 },
+  spriteImage: { width: 120, height: 120 },
   accessoryOverlay: { position: 'absolute', top: -8, right: -14, fontSize: 30 },
   stageLabel: { fontSize: 20, fontWeight: '800', color: colors.primary },
   countText: { color: colors.text, fontSize: 13, fontWeight: '600', marginTop: spacing.xs, marginBottom: spacing.sm },
