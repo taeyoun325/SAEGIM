@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Text from '../components/Text';
@@ -9,7 +9,7 @@ import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
 import { Post, Writing } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
-import { getCurrentMonthWritingDayCount, getMyWritings } from '../services/writingService';
+import { getMyWritings } from '../services/writingService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
 import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
@@ -20,7 +20,7 @@ import TopBarButtons from '../components/TopBarButtons';
 import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import { RootStackParamList } from '../navigation/types';
-import { formatDisplayDate, timestampToDateString } from '../utils/date';
+import { formatDisplayDate, timestampToDateString, todayDateString } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -35,7 +35,16 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
-  const [monthDayCount, setMonthDayCount] = useState(0);
+
+  // 스트릭이 끊겨도 "이번 달에 며칠 새겼는지"는 그대로 남는다 — 스트릭 압박 대신
+  // "완벽하지 않아도 꾸준히 쓴 날이 더 많다"는 걸 보여주는 부드러운 지표다.
+  const monthDayCount = useMemo(() => {
+    const currentMonth = todayDateString().slice(0, 7);
+    const days = new Set(
+      myWritings.map((w) => timestampToDateString(w.createdAt)).filter((d) => d.slice(0, 7) === currentMonth)
+    );
+    return days.size;
+  }, [myWritings]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -46,10 +55,6 @@ export default function ProfileScreen() {
         getMyWritings(user.uid).then(setMyWritings),
       ]);
       setPosts(list);
-
-      if (profile?.monthlyGoal) {
-        setMonthDayCount(await getCurrentMonthWritingDayCount(user.uid));
-      }
 
       if (profile) {
         // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
@@ -194,6 +199,10 @@ export default function ProfileScreen() {
 
             <Text style={styles.freezeNote}>
               🧊 연속 기록 보호권 {profile.streakFreezes ?? 0}개 — 하루를 걸러도 스트릭이 안 끊겨요. 스트릭 배지를 딸 때마다 하나씩 생겨요.
+            </Text>
+
+            <Text style={styles.monthNote}>
+              📅 이번 달 {monthDayCount}일 새겼어요 — 스트릭이 끊겨도 괜찮아요, 쓴 날이 안 쓴 날보다 많으면 충분해요.
             </Text>
 
             {profile.monthlyGoal && (
@@ -389,7 +398,8 @@ const styles = StyleSheet.create({
   writtenRowPublicBadge: { color: colors.success, fontSize: 12, fontWeight: '600' },
   writtenRowPrivateBadge: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
   writtenRowPreview: { color: colors.text, fontSize: 15, lineHeight: 22 },
-  freezeNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.md },
+  freezeNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.xs },
+  monthNote: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginBottom: spacing.md },
   goalSection: { marginBottom: spacing.md },
   goalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs },
   goalLabel: { color: colors.textSoft, fontSize: 12, fontWeight: '600' },
