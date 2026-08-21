@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -20,6 +20,7 @@ export default function SavedPostsScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
@@ -58,6 +59,12 @@ export default function SavedPostsScreen() {
     }, [load])
   );
 
+  async function onRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -72,6 +79,7 @@ export default function SavedPostsScreen() {
       data={filtered}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.list}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       ListHeaderComponent={
         posts.length > 0 ? (
           <View>

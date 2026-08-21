@@ -3,11 +3,13 @@ import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 
 import Text from '../components/Text';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import { colors, spacing } from '../constants/theme';
 import { unblockUser, getDisplayProfile } from '../services/userService';
 
 export default function BlockedUsersScreen() {
   const { user, profile, refreshProfile } = useAuth();
+  const { notify } = useDialog();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [nicknames, setNicknames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,8 @@ export default function BlockedUsersScreen() {
     try {
       await unblockUser(user.uid, targetUid);
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '차단 해제에 실패했어요.');
     } finally {
       setBusyId(null);
     }
