@@ -406,6 +406,11 @@ export default function TodayScreen() {
           {profile && profile.streakCount > 0 && (
             <Text style={styles.streak}>🔥 {profile.streakCount}일째 생각을 새겼어요</Text>
           )}
+          {profile && profile.streakCount === 21 && (
+            <Text style={styles.habitMilestone}>
+              🌱 21일째예요. 이쯤 되면 새기는 게 습관으로 자리 잡기 시작해요.
+            </Text>
+          )}
 
           {memories.map(({ years, writing: memoryWriting }) => (
             <View key={years} style={styles.memoryCard}>
@@ -490,6 +495,7 @@ const styles = StyleSheet.create({
   buttonOutlineText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
   unpublishLink: { color: colors.textSoft, textAlign: 'center', marginTop: spacing.lg },
   streak: { textAlign: 'center', marginTop: spacing.lg, fontSize: 15, color: colors.primary },
+  habitMilestone: { textAlign: 'center', marginTop: spacing.xs, fontSize: 12, color: colors.textSoft },
   memoryCard: {
     marginTop: spacing.lg,
     backgroundColor: colors.card,
