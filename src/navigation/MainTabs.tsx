@@ -1,5 +1,6 @@
 import Text from '../components/Text';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from './types';
 import TodayScreen from '../screens/TodayScreen';
 import FeedScreen from '../screens/FeedScreen';
@@ -29,6 +30,7 @@ const LABELS: Record<keyof MainTabParamList, string> = {
 
 export default function MainTabs() {
   const isWideWeb = useIsWideWeb();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -61,11 +63,12 @@ export default function MainTabs() {
             }
           : {
               tabBarItemStyle: { paddingHorizontal: 0 },
-              // 배경색을 지정하지 않으면 React Navigation 기본값(흰색)이 남아
-              // 다크모드에서 하단 탭바만 하얗게 뜬다.
+              // 제스처 내비게이션 바(iOS 홈 인디케이터, 안드로이드 제스처 영역)에
+              // 탭바가 가리지 않도록 하단 안전영역만큼 높이/패딩을 늘리고, 그 여백도
+              // 탭바와 같은 배경색으로 채워 색이 끊겨 보이지 않게 한다.
               tabBarStyle: {
-                height: 60,
-                paddingBottom: 6,
+                height: 60 + insets.bottom,
+                paddingBottom: 6 + insets.bottom,
                 paddingTop: 4,
                 backgroundColor: colors.card,
                 borderTopColor: colors.border,
