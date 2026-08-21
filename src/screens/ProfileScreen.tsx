@@ -35,6 +35,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // 스트릭이 끊겨도 "이번 달에 며칠 새겼는지"는 그대로 남는다 — 스트릭 압박 대신
   // "완벽하지 않아도 꾸준히 쓴 날이 더 많다"는 걸 보여주는 부드러운 지표다.
@@ -49,6 +50,7 @@ export default function ProfileScreen() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
       const [list] = await Promise.all([
         getUserPublicPosts(user.uid),
@@ -57,18 +59,28 @@ export default function ProfileScreen() {
       setPosts(list);
 
       if (profile) {
-        // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
-        // (값이 이미 맞으면 같은 객체를 그대로 돌려주므로 불필요한 갱신이 없다.)
-        const synced = await syncUserCounts(user.uid, profile);
-        if (synced !== profile) await refreshProfile();
+        // 카운트 동기화와 배지 수여는 부수 효과라, 실패해도 목록 자체는 보여준다
+        // (다음에 화면을 다시 열 때 어차피 또 시도한다). 여기서 던지면 정상적으로
+        // 불러온 글까지 "글이 없음"으로 보이게 되므로 따로 감싼다.
+        try {
+          // 화면에 보이는 개수가 실제 내 글 수와 항상 같도록 맞춘다.
+          // (값이 이미 맞으면 같은 객체를 그대로 돌려주므로 불필요한 갱신이 없다.)
+          const synced = await syncUserCounts(user.uid, profile);
+          if (synced !== profile) await refreshProfile();
 
-        const totalLikes = list.reduce((sum, p) => sum + p.likeCount, 0);
-        const { newBadges } = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
-        if (newBadges.length > 0) {
-          await refreshProfile();
-          setCelebrationBadge(newBadges[0]);
+          const totalLikes = list.reduce((sum, p) => sum + p.likeCount, 0);
+          const { newBadges } = await evaluateAndAwardBadges(user.uid, profile, totalLikes);
+          if (newBadges.length > 0) {
+            await refreshProfile();
+            setCelebrationBadge(newBadges[0]);
+          }
+        } catch {
+          // 무시 — 다음 진입 때 다시 시도한다.
         }
       }
+    } catch (e) {
+      // 실패를 삼키면 빈 목록이 "아직 글이 없어요"로 보여 오해를 준다.
+      setError('글을 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
     } finally {
       setLoading(false);
     }
@@ -284,7 +296,11 @@ export default function ProfileScreen() {
           !loading ? (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>
-                {activeTab === 'written' ? '아직 새긴 생각이 없어요.' : '아직 공개한 생각이 없어요.'}
+                {error
+                  ? error
+                  : activeTab === 'written'
+                    ? '아직 새긴 생각이 없어요.'
+                    : '아직 공개한 생각이 없어요.'}
               </Text>
             </View>
           ) : null

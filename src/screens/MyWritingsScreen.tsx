@@ -265,6 +265,8 @@ export default function MyWritingsScreen() {
     try {
       await purgeExpiredTrash(user.uid);
       setTrashed(await getTrashedWritings(user.uid));
+    } catch (e) {
+      await notify('오류', '휴지통을 불러오지 못했어요.');
     } finally {
       setTrashLoading(false);
     }
