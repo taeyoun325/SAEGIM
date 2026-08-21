@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
@@ -26,10 +26,34 @@ export default function ReportScreen() {
   const route = useRoute();
   const { targetType, targetId } = route.params as { targetType: 'post' | 'comment'; targetId: string };
   const { user } = useAuth();
-  const { notify } = useDialog();
+  const { notify, confirm } = useDialog();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [detail, setDetail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // ref로 관리한다 — handleSubmit에서 setSubmitted(true) 직후 곧바로 goBack()을
+  // 호출하는데, state는 리렌더를 거쳐야 반영되어 그 사이 beforeRemove 리스너가
+  // 아직 이전 렌더의(즉 false인) 클로저를 들고 있는 채로 먼저 발동해버린다.
+  // ref는 리렌더 없이 즉시 최신값을 읽으므로 이 경쟁을 없앤다.
+  const submittedRef = useRef(false);
+
+  // 추가 설명을 써놓고 뒤로가기를 누르면 아무 안내 없이 그대로 날아갔다 —
+  // 신고 사유 선택과 달리 이 화면은 별도 스택 라우트라 뒤로가면 다시 못 돌아온다.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (submittedRef.current || !detail.trim()) return;
+      e.preventDefault();
+      confirm({
+        title: '작성 중인 내용이 있어요',
+        message: '지금 나가면 입력한 추가 설명이 사라져요. 나갈까요?',
+        confirmLabel: '나가기',
+        destructive: true,
+      }).then((ok) => {
+        if (ok) navigation.dispatch(e.data.action);
+      });
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, detail]);
 
   async function handleSubmit() {
     if (!user || !reason) return;
@@ -37,6 +61,7 @@ export default function ReportScreen() {
     try {
       await submitReport(targetType, targetId, user.uid, reason, detail);
       await notify('신고가 접수되었어요.', '검토 후 조치할게요.');
+      submittedRef.current = true;
       navigation.goBack();
     } catch (e: any) {
       await notify('오류', e?.message || '신고에 실패했어요.');

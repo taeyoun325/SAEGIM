@@ -18,7 +18,6 @@ import {
 } from '../services/notificationService';
 import { isAdmin } from '../services/adminService';
 import { isAppLockEnabled, setAppLockPin, disableAppLock, isValidPin } from '../services/appLockService';
-import { isDevModeEnabled, setDevModeEnabled } from '../services/devModeService';
 import {
   updateUserProfile,
   muteNotificationType,
@@ -85,7 +84,6 @@ export default function SettingsScreen() {
   const { preference: fontScalePreference, setPreference: setFontScalePreference } = useFontScale();
   const [resendingVerification, setResendingVerification] = useState(false);
   const [appLockOn, setAppLockOn] = useState(false);
-  const [devModeOn, setDevModeOn] = useState(false);
   const isGuestAccount = !!user?.email?.endsWith(GUEST_EMAIL_DOMAIN);
 
   useEffect(() => {
@@ -184,17 +182,6 @@ export default function SettingsScreen() {
     if (!user) return;
     isAdmin(user.uid).then(setAdmin);
   }, [user]);
-
-  // 개발자 서버 모드 스위치 자체는 기기 로컬 값이지만, 이 섹션이 렌더링되는 조건이
-  // admin이라 사실상 관리자 계정에서만 켤 수 있다.
-  useEffect(() => {
-    isDevModeEnabled().then(setDevModeOn);
-  }, []);
-
-  async function handleToggleDevMode(next: boolean) {
-    setDevModeOn(next);
-    await setDevModeEnabled(next);
-  }
 
   async function toggleReminder(next: boolean) {
     if (Platform.OS === 'web') {
@@ -403,23 +390,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </View>
-
-      {admin && (
-        <View style={styles.card}>
-          <View style={styles.reminderRow}>
-            <Text style={styles.rowButtonText}>🧪 개발자 서버 모드</Text>
-            <Switch
-              value={devModeOn}
-              onValueChange={handleToggleDevMode}
-              accessibilityRole="switch"
-              accessibilityLabel="개발자 서버 모드"
-            />
-          </View>
-          <Text style={styles.categoryHint}>
-            내 계정에서만 보이는 실험용 스위치예요. 켜면 프로필 화면에 시험 중인 기능(캐릭터 육성)이 나타나요.
-          </Text>
-        </View>
-      )}
 
       <View style={styles.card}>
         <View style={styles.categorySection}>

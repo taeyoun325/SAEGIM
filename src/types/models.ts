@@ -78,11 +78,11 @@ export interface UserProfile {
   streakFreezes?: number; // 하루 빠져도 연속 기록을 지켜주는 보호권
   mutedNotificationTypes?: NotificationType[]; // 이 종류의 알림은 아예 만들지 않는다(알림 피로 방지)
   monthlyGoal?: number | null; // 이번 달에 새기고 싶은 날짜 수(선택). 설정하지 않으면 진행률을 보여주지 않는다.
-  // 개발자 서버 모드 전용 캐릭터 육성 실험 필드(관리자 계정에서만 쓰임).
+  // 캐릭터 육성 필드.
   characterSpeciesId?: string | null; // 고른 알(종). null이면 아직 알을 고르지 않은 상태.
-  characterStageOverride?: number | null; // 개발자 모드 "부화/진화" 버튼으로 강제로 앞당긴 단계(0부터). 실제 writingCount보다 낮으면 무시된다.
+  characterStageOverride?: number | null; // "부화/진화" 버튼으로 밝혀 보여준 단계(0부터). 실제 writingCount로 계산한 단계를 넘어설 수 없다.
   characterAffection?: number; // 먹이 주기로 쌓이는 애정도
-  characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD, 개발자 모드에서는 무시됨)
+  characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD)
   characterEquippedAccessoryId?: string | null;
 }
 

@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import Text from '../components/Text';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from './types';
@@ -9,9 +8,6 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CharacterScreen from '../screens/CharacterScreen';
 import { colors, fonts, spacing } from '../constants/theme';
 import { useIsWideWeb } from '../hooks/useResponsive';
-import { useAuth } from '../context/AuthContext';
-import { isAdmin } from '../services/adminService';
-import { isDevModeEnabled } from '../services/devModeService';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -33,18 +29,6 @@ const LABELS: Record<keyof MainTabParamList, string> = {
 
 export default function MainTabs() {
   const isWideWeb = useIsWideWeb();
-  const { user } = useAuth();
-  // 캐릭터 탭은 개발자 서버 모드 실험이라 관리자 계정 + 설정에서 스위치를 켠
-  // 경우에만 탭바에 노출한다(일반 사용자에게는 아예 안 보인다).
-  const [showCharacterTab, setShowCharacterTab] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const [adminAccount, devMode] = await Promise.all([isAdmin(user.uid), isDevModeEnabled()]);
-      setShowCharacterTab(adminAccount && devMode);
-    })();
-  }, [user]);
 
   return (
     <Tab.Navigator
@@ -90,7 +74,7 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Profile" component={ProfileScreen} />
-      {showCharacterTab && <Tab.Screen name="Character" component={CharacterScreen} />}
+      <Tab.Screen name="Character" component={CharacterScreen} />
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Feed" component={FeedScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />

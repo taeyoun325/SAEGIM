@@ -38,13 +38,19 @@ async function notifyMentions(
 ): Promise<void> {
   const nicknames = new Set(Array.from(content.matchAll(MENTION_REGEX), (m) => m[1]));
   if (nicknames.size === 0) return;
+  // 각 멘션을 따로 감싼다 — 한 명에게 보내는 알림이 실패해도(예: 그 사이 탈퇴)
+  // 같은 댓글의 다른 멘션 알림까지 Promise.all 때문에 통째로 막히면 안 된다.
   await Promise.all(
     Array.from(nicknames).map(async (nickname) => {
-      const snap = await getDoc(doc(db, 'nicknames', nickname.trim().toLowerCase()));
-      if (!snap.exists()) return;
-      const mentionedUid = snap.data().uid as string;
-      if (mentionedUid === actorId || alreadyNotified.has(mentionedUid)) return;
-      await createNotification(mentionedUid, actorId, 'comment_mention', postId, commentId);
+      try {
+        const snap = await getDoc(doc(db, 'nicknames', nickname.trim().toLowerCase()));
+        if (!snap.exists()) return;
+        const mentionedUid = snap.data().uid as string;
+        if (mentionedUid === actorId || alreadyNotified.has(mentionedUid)) return;
+        await createNotification(mentionedUid, actorId, 'comment_mention', postId, commentId);
+      } catch {
+        // 무시 — 다른 멘션 알림은 계속 처리된다.
+      }
     })
   );
 }

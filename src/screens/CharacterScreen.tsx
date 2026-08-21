@@ -6,13 +6,9 @@ import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import TopBarButtons from '../components/TopBarButtons';
-import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory } from '../services/characterService';
+import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory, canFeedToday } from '../services/characterService';
 
-// 개발자 서버 모드 전용 캐릭터 육성 화면. 프로필-오늘 탭 사이에 탭으로 노출된다
-// (관리자 + 개발자 모드일 때만, MainTabs에서 가드). 실사용자에게 낼 기능이 아니라
-// "글쓰기로 캐릭터가 자란다"는 아이디어 자체를 눈으로 빠르게 확인해보기 위한
-// 실험 공간이라, 먹이 주기를 무제한으로 허용하고 부화/진화도 즉시 미리 볼 수
-// 있게 하고, 언제든 알을 다시 고를 수 있다.
+// "새김"을 계속할수록 함께 자라는 캐릭터. 프로필-오늘 탭 사이에 탭으로 노출된다.
 export default function CharacterScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
@@ -56,10 +52,10 @@ export default function CharacterScreen() {
   }
 
   async function handleFeed() {
-    if (!user || !profile || busy) return;
+    if (!user || !profile || busy || !canFeedToday(profile)) return;
     setBusy(true);
     try {
-      await feedCharacter(user.uid, profile, { unlimited: true });
+      await feedCharacter(user.uid, profile);
       await refreshProfile();
     } catch (e: any) {
       await notify('오류', e?.message || '먹이를 주지 못했어요.');
@@ -119,7 +115,6 @@ export default function CharacterScreen() {
       <View style={{ flex: 1 }}>
         <TopBarButtons />
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Text style={styles.badge}>🧪 개발자 서버 모드 실험</Text>
           <Text style={styles.pickTitle}>키울 알을 골라주세요</Text>
           <Text style={styles.pickHint}>알마다 깨어나는 모습도, 다 자란 모습도 완전히 달라요.</Text>
           <View style={styles.eggGrid}>
@@ -149,14 +144,14 @@ export default function CharacterScreen() {
   const unlocked = getUnlockedAccessories(affection);
   const nextLocked = getNextLockedAccessory(affection);
   const equippedAccessory = unlocked.find((a) => a.id === equippedId);
-  const atLastStage = progress.stageIndex >= species.stages.length - 1;
+  const canFeed = canFeedToday(profile);
   const evolveLabel = progress.stageIndex === 0 ? '🥚 부화시키기' : `${progress.nextStage?.emoji ?? '✨'} 진화시키기`;
 
   return (
     <View style={{ flex: 1 }}>
       <TopBarButtons />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.badge}>🧪 개발자 서버 모드 실험 · {species.eggName} 라인</Text>
+      <Text style={styles.badge}>{species.eggName} 라인</Text>
 
       <View style={styles.emojiWrap}>
         {progress.stage.sprite ? (
@@ -198,13 +193,13 @@ export default function CharacterScreen() {
       ) : (
         <Text style={styles.nextText}>가장 자란 모습이에요.</Text>
       )}
-      {!atLastStage && (
+      {progress.readyToEvolve && (
         <TouchableOpacity
           style={styles.evolveButton}
           onPress={handleEvolve}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel={`${evolveLabel}, 실제로 그만큼 쓰지 않아도 다음 모습을 미리 봐요`}
+          accessibilityLabel={`${evolveLabel}, 다음 모습으로 자랄 준비가 됐어요`}
         >
           <Text style={styles.evolveButtonText}>{evolveLabel}</Text>
         </TouchableOpacity>
@@ -214,13 +209,13 @@ export default function CharacterScreen() {
 
       <Text style={styles.affectionText}>❤️ 애정도 {affection}</Text>
       <TouchableOpacity
-        style={styles.feedButton}
+        style={[styles.feedButton, !canFeed && styles.feedButtonDisabled]}
         onPress={handleFeed}
-        disabled={busy}
+        disabled={busy || !canFeed}
         accessibilityRole="button"
-        accessibilityLabel="먹이 주기, 개발자 모드라 무제한"
+        accessibilityLabel={canFeed ? '먹이 주기' : '먹이 주기, 오늘은 이미 줬어요'}
       >
-        <Text style={styles.feedButtonText}>🍚 먹이 주기 (무제한)</Text>
+        <Text style={styles.feedButtonText}>{canFeed ? '🍚 먹이 주기' : '🍚 오늘은 다 줬어요'}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>꾸미기</Text>
@@ -318,6 +313,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   feedButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  feedButtonDisabled: { backgroundColor: colors.border },
   sectionLabel: { color: colors.textSoft, fontSize: 12, fontWeight: '700', alignSelf: 'center', marginTop: spacing.lg, marginBottom: spacing.xs },
   accessoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
   accessoryChip: {
