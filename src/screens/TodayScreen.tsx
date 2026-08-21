@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import Text from '../components/Text';
 import TextInput from '../components/TextInput';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../constants/theme';
@@ -46,7 +45,6 @@ type TabNav = NativeStackNavigationProp<MainTabParamList>;
 const MEMORY_LOOKBACK_YEARS = [1, 2, 3, 4, 5];
 
 export default function TodayScreen() {
-  const insets = useSafeAreaInsets();
   const tabNavigation = useNavigation<TabNav>();
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
@@ -287,7 +285,7 @@ export default function TodayScreen() {
       <TopBarButtons />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingTop: spacing.lg + insets.top }]}
+        contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
       <Text style={styles.appName}>새김</Text>

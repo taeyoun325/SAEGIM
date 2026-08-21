@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import Text from '../components/Text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +12,6 @@ type CharacterTab = 'raise' | 'dex';
 
 // "새김"을 계속할수록 함께 자라는 캐릭터. 프로필-오늘 탭 사이에 탭으로 노출된다.
 export default function CharacterScreen() {
-  const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const [busy, setBusy] = useState(false);
@@ -129,7 +127,7 @@ export default function CharacterScreen() {
   return (
     <View style={{ flex: 1 }}>
       <TopBarButtons />
-      <View style={[styles.tabRow, { paddingTop: spacing.lg + insets.top }]}>
+      <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'raise' && styles.tabActive]}
           onPress={() => setActiveTab('raise')}
@@ -315,7 +313,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xl, alignItems: 'center' },
-  tabRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  tabRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   tab: {
     flex: 1,
     alignItems: 'center',
