@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import Text from '../components/Text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius } from '../constants/theme';
@@ -24,6 +25,7 @@ function pad(n: number) {
 }
 
 export default function CalendarScreen() {
+  const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
   const navigation = useNavigation<Nav>();
   const [cursor, setCursor] = useState(() => new Date());
@@ -116,7 +118,7 @@ export default function CalendarScreen() {
   return (
     <View style={{ flex: 1 }}>
       <TopBarButtons />
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.scrollContent, { paddingTop: spacing.lg + insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => setCursor(new Date(year, month - 1, 1))}
