@@ -160,11 +160,28 @@ export default function CharacterScreen() {
 
       <View style={styles.emojiWrap}>
         {progress.stage.sprite ? (
-          <Image source={progress.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
+          <View style={styles.spriteFrame}>
+            <Image source={progress.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
+            {equippedAccessory?.emoji && progress.stage.accessoryAnchor ? (
+              <Text
+                style={[
+                  styles.accessoryOnHead,
+                  {
+                    left: `${progress.stage.accessoryAnchor[0]}%`,
+                    top: `${progress.stage.accessoryAnchor[1]}%`,
+                  },
+                ]}
+              >
+                {equippedAccessory.emoji}
+              </Text>
+            ) : null}
+          </View>
         ) : (
-          <Text style={styles.emoji}>{progress.stage.emoji}</Text>
+          <>
+            <Text style={styles.emoji}>{progress.stage.emoji}</Text>
+            {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
+          </>
         )}
-        {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
       </View>
       <Text style={styles.stageLabel}>{progress.stage.label}</Text>
       <Text style={styles.countText}>지금까지 새긴 생각 {progress.writingCount}개</Text>
@@ -271,8 +288,12 @@ const styles = StyleSheet.create({
   eggHint: { fontSize: 11, color: colors.textSoft, marginTop: 2, textAlign: 'center' },
   emojiWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   emoji: { fontSize: 64 },
+  spriteFrame: { width: 120, height: 120, position: 'relative' },
   spriteImage: { width: 120, height: 120 },
   accessoryOverlay: { position: 'absolute', top: -8, right: -14, fontSize: 30 },
+  // 스프라이트마다 다른 머리 위치(accessoryAnchor, 0~100% 좌표)에 얹는다.
+  // transform으로 중앙 정렬해 anchor 자체가 "머리 중심"을 가리키게 한다.
+  accessoryOnHead: { position: 'absolute', fontSize: 26, transform: [{ translateX: -13 }, { translateY: -20 }] },
   stageLabel: { fontSize: 20, fontWeight: '800', color: colors.primary },
   countText: { color: colors.text, fontSize: 13, fontWeight: '600', marginTop: spacing.xs, marginBottom: spacing.sm },
   track: { width: '100%', maxWidth: 320, height: 8, borderRadius: radius.full, backgroundColor: colors.card, overflow: 'hidden' },
