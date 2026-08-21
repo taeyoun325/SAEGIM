@@ -9,8 +9,6 @@ const PIN_KEY = 'saegim:appLockPin';
 // PIN은 해시 없이 그대로 저장한다 — 위협 모델이 "어깨너머로 훔쳐보기"라 해시화해도
 // 실질적 방어력 차이가 없고, 대신 PIN을 잊으면 영영 못 들어가는 상황을 막기 위해
 // 로그아웃 후 재로그인으로 언제든 우회(=사실상 초기화)할 수 있게 설계했다.
-export const APP_LOCK_PIN_LENGTH = { min: 4, max: 6 };
-
 export function isValidPin(pin: string): boolean {
   return /^\d{4,6}$/.test(pin);
 }

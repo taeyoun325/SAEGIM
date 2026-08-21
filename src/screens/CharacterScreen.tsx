@@ -15,7 +15,7 @@ import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpec
 // 있게 하고, 언제든 알을 다시 고를 수 있다.
 export default function CharacterScreen() {
   const { user, profile, refreshProfile } = useAuth();
-  const { confirm } = useDialog();
+  const { confirm, notify } = useDialog();
   const [busy, setBusy] = useState(false);
   const [equipping, setEquipping] = useState<string | null>(null);
 
@@ -48,6 +48,8 @@ export default function CharacterScreen() {
     try {
       await selectCharacterSpecies(user.uid, speciesId);
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '알을 고르지 못했어요.');
     } finally {
       setBusy(false);
     }
@@ -59,6 +61,8 @@ export default function CharacterScreen() {
     try {
       await feedCharacter(user.uid, profile, { unlimited: true });
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '먹이를 주지 못했어요.');
     } finally {
       setBusy(false);
     }
@@ -70,6 +74,8 @@ export default function CharacterScreen() {
     try {
       await evolveCharacter(user.uid, profile, species);
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '진화시키지 못했어요.');
     } finally {
       setBusy(false);
     }
@@ -81,6 +87,8 @@ export default function CharacterScreen() {
     try {
       await equipAccessory(user.uid, accessoryId);
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '장착하지 못했어요.');
     } finally {
       setEquipping(null);
     }
@@ -99,6 +107,8 @@ export default function CharacterScreen() {
     try {
       await resetCharacter(user.uid);
       await refreshProfile();
+    } catch (e: any) {
+      await notify('오류', e?.message || '초기화하지 못했어요.');
     } finally {
       setBusy(false);
     }
