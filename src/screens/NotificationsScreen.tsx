@@ -93,10 +93,12 @@ export default function NotificationsScreen() {
   const { user, profile, refreshUnreadNotifications } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
       const list = await getNotifications(user.uid);
       // 차단은 새 알림이 안 오게 막는 것과는 별개로, 차단하기 전에 이미 와 있던 알림도
@@ -113,9 +115,18 @@ export default function NotificationsScreen() {
       );
       setRows(withNicknames);
 
-      // 알림함을 열면 그 시점의 알림을 모두 읽음 처리한다(받은메일함 패턴).
-      await markAllRead(list);
-      await refreshUnreadNotifications();
+      // 읽음 처리는 부수 효과라 별도로 감싼다 — 이게 실패해도 방금 불러온
+      // 알림 목록 자체는 그대로 보여준다(안 읽음 배지만 다음에 다시 시도된다).
+      try {
+        // 알림함을 열면 그 시점의 알림을 모두 읽음 처리한다(받은메일함 패턴).
+        await markAllRead(list);
+        await refreshUnreadNotifications();
+      } catch {
+        // 무시 — 다음에 알림함을 열 때 다시 시도한다.
+      }
+    } catch (e) {
+      // 실패를 삼키면 빈 목록이 "아직 알림이 없어요"로 보여 오해를 준다.
+      setError('알림을 불러오지 못했어요. 인터넷 연결을 확인해주세요.');
     } finally {
       setLoading(false);
     }
@@ -146,7 +157,7 @@ export default function NotificationsScreen() {
       contentContainerStyle={styles.list}
       ListEmptyComponent={
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>아직 알림이 없어요.</Text>
+          <Text style={styles.emptyText}>{error || '아직 알림이 없어요.'}</Text>
         </View>
       }
       renderItem={({ item }) => {
