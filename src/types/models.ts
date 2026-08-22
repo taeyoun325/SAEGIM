@@ -78,13 +78,14 @@ export interface UserProfile {
   streakFreezes?: number; // 하루 빠져도 연속 기록을 지켜주는 보호권
   mutedNotificationTypes?: NotificationType[]; // 이 종류의 알림은 아예 만들지 않는다(알림 피로 방지)
   monthlyGoal?: number | null; // 이번 달에 새기고 싶은 날짜 수(선택). 설정하지 않으면 진행률을 보여주지 않는다.
-  // 캐릭터 육성 필드.
+  // 펫 육성 필드.
   characterSpeciesId?: string | null; // 고른 알(종). null이면 아직 알을 고르지 않은 상태.
   characterStageOverride?: number | null; // "부화/진화" 버튼으로 밝혀 보여준 단계(0부터). 실제 writingCount로 계산한 단계를 넘어설 수 없다.
   characterAffection?: number; // 먹이 주기로 쌓이는 애정도
   characterLastFedDate?: string | null; // 하루 한 번 제한용 (YYYY-MM-DD)
   characterEquippedAccessoryId?: string | null;
   characterObtainedSpeciesIds?: string[]; // 마지막 단계까지 키워본 적 있는 종 id 목록(도감용, 초기화해도 지워지지 않는다)
+  characterLastStreakBonusMilestone?: number; // 마지막으로 받은 스트릭 보너스 단계(7의 배수). 초기화해도 유지된다 — 이미 받은 보너스를 다시 못 받게 하는 기록일 뿐.
 }
 
 export type ReportReason = 'spam' | 'abuse' | 'inappropriate' | 'ad' | 'other';

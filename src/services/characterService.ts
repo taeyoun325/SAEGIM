@@ -95,7 +95,7 @@ export async function selectCharacterSpecies(uid: string, speciesId: string): Pr
 }
 
 // 다른 알로 처음부터 다시 키워보고 싶을 때 쓴다.
-// writingCount(실제 새긴 기록)는 손대지 않는다 — 캐릭터 쪽 상태만 초기화한다.
+// writingCount(실제 새긴 기록)는 손대지 않는다 — 펫 쪽 상태만 초기화한다.
 export async function resetCharacter(uid: string): Promise<void> {
   await updateUserProfile(uid, {
     characterSpeciesId: null,
@@ -106,7 +106,7 @@ export async function resetCharacter(uid: string): Promise<void> {
   });
 }
 
-// 먹이 주기: 글쓰기와 별개로 매일 한 번 캐릭터와 상호작용하는 요소(Finch류 앱 참고).
+// 먹이 주기: 글쓰기와 별개로 매일 한 번 펫과 상호작용하는 요소(Finch류 앱 참고).
 // 성장 자체(단계)는 여전히 새김 개수로만 결정되고, 애정도는 순수히 꾸미기 아이템
 // 해금용 보조 지표라 성장 로직과 섞이지 않는다.
 export function canFeedToday(profile: Pick<UserProfile, 'characterLastFedDate'>): boolean {
@@ -120,6 +120,28 @@ export async function feedCharacter(
   if (!canFeedToday(profile)) return;
   const nextAffection = (profile.characterAffection ?? 0) + 1;
   await updateUserProfile(uid, { characterAffection: nextAffection, characterLastFedDate: todayDateString() });
+}
+
+// 매 7일 스트릭마다 애정도 보너스를 준다. 스트릭 자체(연속 새김)는 이미
+// userService.recordTodayWriting이 관리하므로, 여기서는 "이미 받은 단계"만
+// 기록해 같은 단계를 두 번 못 받게 막는 역할만 한다.
+export const STREAK_BONUS_INTERVAL = 7;
+export const STREAK_BONUS_AFFECTION = 3;
+
+// 아직 받지 않은 스트릭 보너스 단계가 있으면 그 단계(7, 14, 21...)를 반환한다.
+export function getPendingStreakBonus(
+  profile: Pick<UserProfile, 'streakCount' | 'characterLastStreakBonusMilestone'>
+): number | null {
+  const reached = Math.floor((profile.streakCount ?? 0) / STREAK_BONUS_INTERVAL) * STREAK_BONUS_INTERVAL;
+  const claimed = profile.characterLastStreakBonusMilestone ?? 0;
+  return reached > claimed ? reached : null;
+}
+
+export async function claimStreakBonus(uid: string, milestone: number, currentAffection: number): Promise<void> {
+  await updateUserProfile(uid, {
+    characterAffection: currentAffection + STREAK_BONUS_AFFECTION,
+    characterLastStreakBonusMilestone: milestone,
+  });
 }
 
 export function getUnlockedAccessories(affection: number): CharacterAccessoryDef[] {

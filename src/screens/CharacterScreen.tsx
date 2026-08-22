@@ -1,28 +1,72 @@
-import { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ScrollView, ActivityIndicator, Image, Animated, Platform } from 'react-native';
 import Text from '../components/Text';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import TopBarButtons from '../components/TopBarButtons';
-import { CHARACTER_SPECIES, findSpecies, getSpeciesProgress, selectCharacterSpecies, resetCharacter, feedCharacter, evolveCharacter, getUnlockedAccessories, getNextLockedAccessory, equipAccessory, canFeedToday, getObtainedSpeciesIds } from '../services/characterService';
+import {
+  CHARACTER_SPECIES,
+  findSpecies,
+  getSpeciesProgress,
+  selectCharacterSpecies,
+  resetCharacter,
+  feedCharacter,
+  evolveCharacter,
+  getUnlockedAccessories,
+  getNextLockedAccessory,
+  equipAccessory,
+  canFeedToday,
+  getObtainedSpeciesIds,
+  getPendingStreakBonus,
+  claimStreakBonus,
+  STREAK_BONUS_AFFECTION,
+} from '../services/characterService';
+import { getCharacterDailyLine, moodReactionLine, randomPatReaction } from '../constants/characterLines';
+import { getTodayPrompt } from '../services/promptService';
+import { getMyWritingForPrompt } from '../services/writingService';
+import { todayDateString } from '../utils/date';
 
 type CharacterTab = 'raise' | 'dex';
 
-// "새김"을 계속할수록 함께 자라는 캐릭터. 프로필-오늘 탭 사이에 탭으로 노출된다.
+// "새김"을 계속할수록 함께 자라는 펫. 프로필-오늘 탭 사이에 탭으로 노출된다.
 export default function CharacterScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { confirm, notify } = useDialog();
   const [busy, setBusy] = useState(false);
   const [equipping, setEquipping] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CharacterTab>('raise');
+  const [claimingBonus, setClaimingBonus] = useState(false);
+  const [todayMood, setTodayMood] = useState<string | null>(null);
+  const [patReaction, setPatReaction] = useState<string | null>(null);
+  const patScale = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
 
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+  );
+
+  // 오늘 이미 글을 남겼다면 그 글에 붙인 기분 이모지를 가져와 펫이
+  // 같은 기분을 따라 보여주게 한다(TodayScreen과 같은 조회 방식 재사용).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      if (!user) return;
+      (async () => {
+        const prompt = await getTodayPrompt();
+        if (!prompt || cancelled) return;
+        const writing = await getMyWritingForPrompt(user.uid, prompt.id);
+        if (!cancelled) setTodayMood(writing?.mood ?? null);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
   );
 
   if (!user || !profile) {
@@ -34,6 +78,37 @@ export default function CharacterScreen() {
   }
 
   const species = findSpecies(profile.characterSpeciesId);
+  const pendingStreakBonus = getPendingStreakBonus(profile);
+
+  function handlePat() {
+    setPatReaction(randomPatReaction());
+    // 잠깐 반응하고 원래 말풍선(오늘의 한마디/기분)으로 돌아온다.
+    setTimeout(() => setPatReaction(null), 2200);
+    if (!reducedMotion) {
+      patScale.setValue(1);
+      Animated.sequence([
+        Animated.timing(patScale, { toValue: 1.12, duration: 120, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(patScale, { toValue: 1, duration: 160, useNativeDriver: Platform.OS !== 'web' }),
+      ]).start();
+    }
+  }
+
+  async function handleClaimStreakBonus() {
+    if (!user || !profile || claimingBonus || pendingStreakBonus === null) return;
+    setClaimingBonus(true);
+    try {
+      await claimStreakBonus(user.uid, pendingStreakBonus, profile.characterAffection ?? 0);
+      await refreshProfile();
+      await notify(
+        `🎉 ${pendingStreakBonus}일 연속 새김!`,
+        `애정도 +${STREAK_BONUS_AFFECTION}을 선물로 받았어요.`
+      );
+    } catch (e: any) {
+      await notify('오류', e?.message || '보너스를 받지 못했어요.');
+    } finally {
+      setClaimingBonus(false);
+    }
+  }
 
   async function handleSelectSpecies(speciesId: string, name: string) {
     if (!user || busy) return;
@@ -96,8 +171,8 @@ export default function CharacterScreen() {
   async function handleReset() {
     if (!user || busy) return;
     const ok = await confirm({
-      title: '캐릭터를 초기화할까요?',
-      message: '지금 키우던 알/캐릭터가 사라지고 처음부터 다른 알을 고를 수 있어요. 새긴 생각 개수 자체는 그대로예요.',
+      title: '펫을 초기화할까요?',
+      message: '지금 키우던 알/펫이 사라지고 처음부터 다른 알을 고를 수 있어요. 새긴 생각 개수 자체는 그대로예요.',
       confirmLabel: '초기화',
       destructive: true,
     });
@@ -152,7 +227,7 @@ export default function CharacterScreen() {
 
       {activeTab === 'dex' ? (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Text style={styles.pickHint}>글을 새기며 캐릭터를 끝까지 키우면 도감에 기록돼요.</Text>
+          <Text style={styles.pickHint}>글을 새기며 펫을 끝까지 키우면 도감에 기록돼요.</Text>
           <View style={styles.dexGrid}>
             {CHARACTER_SPECIES.map((s) => {
               const obtained = obtainedIds.includes(s.id);
@@ -201,31 +276,56 @@ export default function CharacterScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.badge}>{species.eggName} 라인</Text>
 
-      <View style={styles.emojiWrap}>
-        {progress!.stage.sprite ? (
-          <View style={styles.spriteFrame}>
-            <Image source={progress!.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
-            {equippedAccessory?.emoji && progress!.stage.accessoryAnchor ? (
-              <Text
-                style={[
-                  styles.accessoryOnHead,
-                  {
-                    left: `${progress!.stage.accessoryAnchor[0]}%`,
-                    top: `${progress!.stage.accessoryAnchor[1]}%`,
-                  },
-                ]}
-              >
-                {equippedAccessory.emoji}
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <>
-            <Text style={styles.emoji}>{progress!.stage.emoji}</Text>
-            {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
-          </>
-        )}
+      {pendingStreakBonus !== null && (
+        <TouchableOpacity
+          style={styles.streakBonusBanner}
+          onPress={handleClaimStreakBonus}
+          disabled={claimingBonus}
+          accessibilityRole="button"
+          accessibilityLabel={`${pendingStreakBonus}일 연속 새김 보너스 받기`}
+        >
+          <Text style={styles.streakBonusText}>
+            🎉 {pendingStreakBonus}일 연속 새김! 선물 받기
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.speechBubble}>
+        <Text style={styles.speechText}>
+          {patReaction ?? (todayMood ? moodReactionLine(todayMood) : null) ?? getCharacterDailyLine(todayDateString())}
+        </Text>
       </View>
+
+      <TouchableWithoutFeedback onPress={handlePat} accessibilityRole="button" accessibilityLabel="펫 쓰다듬기">
+        <View style={styles.emojiWrap}>
+          <Animated.View style={{ transform: [{ scale: patScale }] }}>
+            {progress!.stage.sprite ? (
+              <View style={styles.spriteFrame}>
+                <Image source={progress!.stage.sprite} style={styles.spriteImage} resizeMode="contain" />
+                {equippedAccessory?.emoji && progress!.stage.accessoryAnchor ? (
+                  <Text
+                    style={[
+                      styles.accessoryOnHead,
+                      {
+                        left: `${progress!.stage.accessoryAnchor[0]}%`,
+                        top: `${progress!.stage.accessoryAnchor[1]}%`,
+                      },
+                    ]}
+                  >
+                    {equippedAccessory.emoji}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <>
+                <Text style={styles.emoji}>{progress!.stage.emoji}</Text>
+                {equippedAccessory?.emoji ? <Text style={styles.accessoryOverlay}>{equippedAccessory.emoji}</Text> : null}
+              </>
+            )}
+          </Animated.View>
+        </View>
+      </TouchableWithoutFeedback>
+      <Text style={styles.patHint}>톡 눌러서 쓰다듬어주세요</Text>
       <Text style={styles.stageLabel}>{progress!.stage.label}</Text>
       <Text style={styles.countText}>지금까지 새긴 생각 {progress!.writingCount}개</Text>
       {progress!.nextStage ? (
@@ -299,7 +399,7 @@ export default function CharacterScreen() {
         onPress={handleReset}
         disabled={busy}
         accessibilityRole="button"
-        accessibilityLabel="캐릭터 초기화, 다른 알 고르기"
+        accessibilityLabel="펫 초기화, 다른 알 고르기"
       >
         <Text style={styles.resetButtonText}>🔄 다른 알로 초기화</Text>
       </TouchableOpacity>
@@ -343,6 +443,28 @@ const styles = StyleSheet.create({
   dexEmoji: { fontSize: 36, opacity: 0.55 },
   dexName: { fontSize: 12, fontWeight: '700', color: colors.text, marginTop: spacing.xs, textAlign: 'center' },
   badge: { color: colors.textSoft, fontSize: 11, fontWeight: '700', marginBottom: spacing.md, textAlign: 'center' },
+  streakBonusBanner: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  streakBonusText: { color: colors.primary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  speechBubble: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    maxWidth: 280,
+  },
+  speechText: { color: colors.text, fontSize: 12, textAlign: 'center', lineHeight: 17 },
+  patHint: { color: colors.textSoft, fontSize: 11, marginTop: -spacing.xs, marginBottom: spacing.xs },
   pickTitle: { fontSize: 20, fontWeight: '800', color: colors.primary, marginBottom: spacing.xs },
   pickHint: { color: colors.textSoft, fontSize: 13, marginBottom: spacing.lg, textAlign: 'center' },
   eggGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center' },
