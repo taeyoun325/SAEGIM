@@ -53,3 +53,5 @@ store-assets/
 
 # Firebase CLI 배포 캐시
 .firebase/
+
+build-output/
