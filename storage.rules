@@ -8,6 +8,8 @@ service firebase.storage {
         && request.auth.uid == uid
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+      // 계정 삭제 시 본인 프로필 사진을 지울 수 있어야 한다.
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
   }
 }

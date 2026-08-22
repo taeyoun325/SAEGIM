@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDocs, increment, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { deleteDocsWhere as deleteQueryDocs, deletePostRelatedContent } from './postService';
+import { deleteProfileImage } from './storageService';
 
 // 계정 삭제 시 사용자가 만든 모든 콘텐츠를 함께 지운다.
 // Google Play의 데이터 삭제 정책상 계정 정보만 지우고 콘텐츠를 남겨두면 안 된다.
@@ -78,6 +79,7 @@ export async function deleteAllUserContent(uid: string, nickname?: string): Prom
   }
 
   await deleteDoc(doc(db, 'users', uid));
+  await deleteProfileImage(uid);
 
   return { posts, writings, comments, likes };
 }
