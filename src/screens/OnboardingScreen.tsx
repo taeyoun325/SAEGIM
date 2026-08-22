@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import Text from '../components/Text';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/types';
 import { colors, spacing, radius } from '../constants/theme';
 import { markOnboardingDone } from '../services/onboardingService';
+import { enableDailyReminder } from '../services/notificationService';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Onboarding'>;
 
@@ -21,6 +22,12 @@ export default function OnboardingScreen({ navigation }: Props) {
 
   async function skip() {
     await markOnboardingDone();
+    // 온보딩은 딱 한 번만 보이는 화면이라, 알림 권한도 이 시점에 함께 물어봐서
+    // 나중에 설정 화면 깊숙이 들어가야만 켤 수 있는 상태를 피한다. 거부해도
+    // 로그인은 그대로 진행되고, 웹은 알림 자체를 지원하지 않아 건너뛴다.
+    if (Platform.OS !== 'web') {
+      await enableDailyReminder().catch(() => {});
+    }
     navigation.replace('Login');
   }
 

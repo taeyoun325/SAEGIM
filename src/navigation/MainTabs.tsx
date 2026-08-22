@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import Text from '../components/Text';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +10,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CharacterScreen from '../screens/CharacterScreen';
 import { colors, fonts, spacing } from '../constants/theme';
 import { useIsWideWeb } from '../hooks/useResponsive';
+import { useAuth } from '../context/AuthContext';
+import { isTourDone, markTourDone } from '../services/tourService';
+import AppTourOverlay from '../components/AppTourOverlay';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -22,7 +26,7 @@ const ICONS: Record<keyof MainTabParamList, string> = {
 
 const LABELS: Record<keyof MainTabParamList, string> = {
   Profile: '프로필',
-  Character: '캐릭터',
+  Character: '펫',
   Today: '오늘',
   Feed: '피드',
   Calendar: '캘린더',
@@ -31,11 +35,34 @@ const LABELS: Record<keyof MainTabParamList, string> = {
 export default function MainTabs() {
   const isWideWeb = useIsWideWeb();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const [showTour, setShowTour] = useState(false);
+
+  // 회원가입/로그인 직후 처음 메인 화면에 들어왔을 때 딱 한 번만 사용법을 안내한다.
+  // 계정별로 기록하므로 한 기기를 여러 계정이 같이 써도 계정마다 한 번씩 보인다.
+  const uid = user?.uid;
+
+  // Firebase의 onAuthStateChanged는 초기 복원 과정에서 같은 사용자에 대해 매번 새
+  // user 객체 참조로 여러 번 불릴 수 있다. user 객체 자체를 의존성으로 쓰면 그때마다
+  // 이 effect가 다시 돌아 "안내 마치기"로 방금 닫은 투어를 다시 띄우는 경합이
+  // 생기므로, 실제로 바뀔 때만 의미가 있는 uid 문자열을 의존성으로 쓴다.
+  useEffect(() => {
+    if (!uid) return;
+    isTourDone(uid).then((done) => {
+      if (!done) setShowTour(true);
+    });
+  }, [uid]);
+
+  function finishTour() {
+    setShowTour(false);
+    if (uid) markTourDone(uid);
+  }
 
   return (
-    <Tab.Navigator
-      initialRouteName="Today"
-      screenOptions={({ route }) => ({
+    <>
+      <Tab.Navigator
+        initialRouteName="Today"
+        screenOptions={({ route }) => ({
         headerShown: false,
         // 데스크톱 웹에서는 좌측 사이드바, 모바일에서는 하단 탭바.
         tabBarPosition: isWideWeb ? 'left' : 'bottom',
@@ -82,5 +109,7 @@ export default function MainTabs() {
       <Tab.Screen name="Feed" component={FeedScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
     </Tab.Navigator>
+      {showTour && <AppTourOverlay onFinish={finishTour} />}
+    </>
   );
 }
