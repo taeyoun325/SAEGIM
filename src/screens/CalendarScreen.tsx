@@ -246,7 +246,7 @@ export default function CalendarScreen() {
                         liked={likedPostIds.has(p.id)}
                         onPress={() => {
                           closeModal();
-                          navigation.navigate('PostDetail', { postId: p.id });
+                          navigation.navigate('PostDetail', { postId: p.id, focusComments: true });
                         }}
                         rank={i < 3 ? ((i + 1) as 1 | 2 | 3) : undefined}
                       />

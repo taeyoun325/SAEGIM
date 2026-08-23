@@ -67,13 +67,15 @@ async function main() {
   // 댓글 생성에는 15초 쿨다운이 걸려 있어, 2단계에서 답글을 달 사람은 따로 둔다
   // (같은 계정으로 연속 댓글을 달면 도배 방지 규칙에 정상적으로 막힌다).
   const C = await session('cascadeC');
+  const D = await session('cascadeD'); // 3단계(탈퇴)에서 댓글을 남길 사람
   const stamp = Date.now();
   const password = 'e2eTest1234!';
 
   const { user: ua } = await createUserWithEmailAndPassword(A.auth, `e2e.del.a.${stamp}@saegim-test.dev`, password);
   const { user: ub } = await createUserWithEmailAndPassword(B.auth, `e2e.del.b.${stamp}@saegim-test.dev`, password);
   const { user: uc } = await createUserWithEmailAndPassword(C.auth, `e2e.del.c.${stamp}@saegim-test.dev`, password);
-  for (const [s, u, nick] of [[A, ua, `삭제테스트A${stamp}`], [B, ub, `삭제테스트B${stamp}`], [C, uc, `삭제테스트C${stamp}`]]) {
+  const { user: ud } = await createUserWithEmailAndPassword(D.auth, `e2e.del.d.${stamp}@saegim-test.dev`, password);
+  for (const [s, u, nick] of [[A, ua, `삭제테스트A${stamp}`], [B, ub, `삭제테스트B${stamp}`], [C, uc, `삭제테스트C${stamp}`], [D, ud, `삭제테스트D${stamp}`]]) {
     await setDoc(doc(s.db, 'users', u.uid), {
       uid: u.uid, nickname: nick, photoURL: null, createdAt: Date.now(),
       writingCount: 0, publicPostCount: 0, streakCount: 0, lastWritingDate: null, blockedUserIds: [],
@@ -140,6 +142,9 @@ async function main() {
     await deleteDocsWhere(A.db, 'comments', 'postId', postRef.id); // 2) 딸린 문서 정리
     await deleteDocsWhere(A.db, 'likes', 'postId', postRef.id);
     await deleteDocsWhere(A.db, 'saves', 'postId', postRef.id);
+    // 앱과 동일하게 알림 정리까지 포함한다 — 이 쿼리는 read 규칙으로 판정되므로
+    // 여기를 빼두면 실제 앱에서만 실패하는 버그를 테스트가 놓친다(실제로 놓쳤었다).
+    await deleteDocsWhere(A.db, 'notifications', 'postId', postRef.id);
     await updateDoc(wRef, { visibility: 'private', postId: null }); // 3) 원본 글 되돌리기
   } catch (e) {
     deleteError = e;
@@ -239,15 +244,76 @@ async function main() {
   check('답글/댓글좋아요 모두 정리됨', replyLeft.empty && clLeft.empty,
     `답글 ${replyLeft.size} / 댓글좋아요 ${clLeft.size} 남음`);
 
+  // ============================================================
+  // 계정 삭제: 남의 반응이 달린 내 글을 가진 채로 탈퇴할 수 있는가
+  // (앱 accountService.deleteAllUserContent와 같은 순서를 그대로 재현한다)
+  // ============================================================
+  const post3 = await addDoc(collection(A.db, 'posts'), {
+    writingId: wRef.id, userId: ua.uid, promptId, lines: ['탈퇴 테스트'],
+    createdAt: Date.now(), likeCount: 0, commentCount: 0,
+  });
+  // B가 좋아요, C가 댓글을 남긴다.
+  const l3 = `${post3.id}_${ub.uid}`;
+  const l3Batch = writeBatch(B.db);
+  l3Batch.set(doc(B.db, 'likes', l3), { id: l3, postId: post3.id, userId: ub.uid, createdAt: Date.now() });
+  l3Batch.update(doc(B.db, 'posts', post3.id), { likeCount: increment(1) });
+  await l3Batch.commit();
+
+  const c3Batch = writeBatch(D.db);
+  const c3Ref = doc(collection(D.db, 'comments'));
+  c3Batch.set(c3Ref, {
+    postId: post3.id, userId: ud.uid, authorNickname: `삭제테스트D${stamp}`,
+    content: 'D의 댓글', createdAt: Date.now(), likeCount: 0, parentCommentId: null,
+  });
+  c3Batch.update(doc(D.db, 'posts', post3.id), { commentCount: increment(1) });
+  stampRateLimit(c3Batch, D.db, ud.uid, 'comment');
+  try {
+    await c3Batch.commit();
+    check('탈퇴 테스트용 글에 남의 반응 추가', true);
+  } catch (e) {
+    check('탈퇴 테스트용 글에 남의 반응 추가', false, String(e.code || e));
+    throw e;
+  }
+
+  let accountDeleteError = null;
+  try {
+    // 1) 내 게시물을 먼저 지우고 2) 딸린 남의 문서를 정리한다.
+    const myPosts = await getDocs(query(collection(A.db, 'posts'), where('userId', '==', ua.uid)));
+    for (const p of myPosts.docs) await deleteDoc(p.ref);
+    for (const p of myPosts.docs) {
+      await deleteDocsWhere(A.db, 'comments', 'postId', p.id);
+      await deleteDocsWhere(A.db, 'likes', 'postId', p.id);
+      await deleteDocsWhere(A.db, 'saves', 'postId', p.id);
+      await deleteDocsWhere(A.db, 'notifications', 'postId', p.id);
+    }
+    // 3) 내 글/닉네임/프로필 정리
+    await deleteDocsWhere(A.db, 'writings', 'userId', ua.uid);
+    await deleteDoc(doc(A.db, 'users', ua.uid));
+  } catch (e) {
+    accountDeleteError = e;
+  }
+  check('남의 반응이 달린 글을 가진 계정 탈퇴 성공', accountDeleteError === null,
+    accountDeleteError ? String(accountDeleteError.code || accountDeleteError) : '');
+
+  const [l3Left, c3Left, p3Left] = await Promise.all([
+    getDocs(query(collection(B.db, 'likes'), where('postId', '==', post3.id))),
+    getDocs(query(collection(B.db, 'comments'), where('postId', '==', post3.id))),
+    getDoc(doc(B.db, 'posts', post3.id)),
+  ]);
+  check('탈퇴 후 남의 좋아요/댓글까지 정리됨', l3Left.empty && c3Left.empty && !p3Left.exists(),
+    `좋아요 ${l3Left.size} / 댓글 ${c3Left.size} 남음`);
+
   // --- 정리 ---
   await deleteDoc(doc(A.db, 'posts', post2.id)).catch(() => {});
   await deleteDoc(wRef).catch(() => {});
   await deleteDoc(doc(A.db, 'users', ua.uid)).catch(() => {});
   await deleteDoc(doc(B.db, 'users', ub.uid)).catch(() => {});
   await deleteDoc(doc(C.db, 'users', uc.uid)).catch(() => {});
+  await deleteDoc(doc(D.db, 'users', ud.uid)).catch(() => {});
   await A.auth.currentUser?.delete().catch(() => {});
   await B.auth.currentUser?.delete().catch(() => {});
   await C.auth.currentUser?.delete().catch(() => {});
+  await D.auth.currentUser?.delete().catch(() => {});
 
   console.log(`\n=== 결과: ${pass.length} PASS / ${fail.length} FAIL ===`);
   if (fail.length) {
@@ -257,6 +323,7 @@ async function main() {
   await deleteApp(A.app);
   await deleteApp(B.app);
   await deleteApp(C.app);
+  await deleteApp(D.app);
   process.exit(fail.length ? 1 : 0);
 }
 

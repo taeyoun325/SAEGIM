@@ -133,7 +133,7 @@ export default function SavedPostsScreen() {
         <PostCard
           post={item}
           liked={likedPostIds.has(item.id)}
-          onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+          onPress={() => navigation.navigate('PostDetail', { postId: item.id, focusComments: true })}
           onPressAuthor={() => navigation.navigate('OtherProfile', { userId: item.userId })}
         />
       )}

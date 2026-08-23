@@ -191,7 +191,7 @@ export default function FeedScreen() {
           <PostCard
             post={item}
             liked={likedPostIds.has(item.id)}
-            onPress={() => navigation.navigate('PostDetail', { postId: item.id })}
+            onPress={() => navigation.navigate('PostDetail', { postId: item.id, focusComments: true })}
             onPressAuthor={() => navigation.navigate('OtherProfile', { userId: item.userId })}
             rank={sort === 'popular' && index < 3 ? ((index + 1) as 1 | 2 | 3) : undefined}
           />

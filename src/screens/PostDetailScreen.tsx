@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -35,7 +35,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export default function PostDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute();
-  const { postId } = route.params as { postId: string };
+  const { postId, focusComments } = route.params as { postId: string; focusComments?: boolean };
   const { user, profile } = useAuth();
   const { confirm, notify } = useDialog();
   const { share } = useShare();
@@ -49,6 +49,14 @@ export default function PostDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [commentText, setCommentText] = useState('');
+  // 목록에서 글을 탭해 들어오면(focusComments) 첫 댓글이 화면 맨 위에 오도록 스크롤한다.
+  // 글 본문은 바로 위에 그대로 있어 위로 올리면 다시 볼 수 있다.
+  //
+  // 헤더(글 본문) 높이를 재서 그만큼 내리는 방식은 쓰지 않는다 — react-native-web에서
+  // ListHeaderComponent의 onLayout이 호출되지 않아 높이가 0으로 남는다.
+  // scrollToIndex(0)은 헤더 높이를 몰라도 첫 항목을 맨 위로 맞춰주므로 웹/네이티브 모두 동작한다.
+  const listRef = useRef<FlatList<any>>(null);
+  const didAutoScrollRef = useRef(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorId: string; nickname: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -154,6 +162,22 @@ export default function PostDetailScreen() {
       load();
     }, [load])
   );
+
+  // 헤더 높이가 측정되고 댓글이 실제로 그려진 뒤에 한 번만 댓글 위치로 내린다.
+  useEffect(() => {
+    if (!focusComments || didAutoScrollRef.current) return;
+    if (orderedComments.length === 0) return;
+    didAutoScrollRef.current = true;
+    // 목록이 첫 항목을 배치한 다음 프레임에 스크롤해야 위치가 잡힌다.
+    requestAnimationFrame(() => {
+      // 실패해도 화면이 깨지지 않는다 — 스크롤만 안 될 뿐 기존과 동일하게 동작한다.
+      try {
+        listRef.current?.scrollToIndex({ index: 0, viewPosition: 0, animated: false });
+      } catch {
+        // 목록이 아직 배치되지 않은 드문 경우. 그대로 둔다.
+      }
+    });
+  }, [focusComments, orderedComments.length]);
 
   async function handleToggleLike() {
     if (!user || !post) return;
@@ -334,12 +358,18 @@ export default function PostDetailScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <FlatList
+        ref={listRef}
         data={orderedComments}
         keyExtractor={(item) => item.comment.id}
         contentContainerStyle={styles.list}
         onEndReached={loadMoreComments}
         onEndReachedThreshold={0.4}
         ListFooterComponent={loadingMoreComments ? <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} /> : null}
+        // 항목 높이를 미리 모르면 scrollToIndex가 실패할 수 있다. 그때는 대략적인
+        // 오프셋으로 한 번 더 시도해 최소한 댓글 근처까지는 내려가게 한다.
+        onScrollToIndexFailed={(info) => {
+          listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+        }}
         ListHeaderComponent={
           <View>
             <View style={styles.postCard}>

@@ -52,7 +52,10 @@ export async function deletePostRelatedContent(postId: string): Promise<void> {
   await deleteDocsWhere('comments', 'postId', postId);
   await deleteDocsWhere('likes', 'postId', postId);
   await deleteDocsWhere('saves', 'postId', postId);
-  await deleteDocsWhere('notifications', 'postId', postId);
+  // 알림 정리는 실패해도 삭제 전체를 되돌리지 않는다. 남은 알림은 이미 사라진 글을
+  // 가리킬 뿐이라(화면에서도 "삭제된 게시물"로 처리된다) 치명적이지 않은 반면,
+  // 여기서 던지면 정작 중요한 글·댓글 삭제까지 실패한 것처럼 보인다.
+  await deleteDocsWhere('notifications', 'postId', postId).catch(() => {});
 }
 
 export async function publishWriting(writing: Writing): Promise<string> {

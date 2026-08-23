@@ -281,7 +281,18 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.recipientId == request.auth.uid;
+      // 읽기 조건은 아래 delete 조건과 반드시 같은 범위여야 한다. 삭제는 문서를 쿼리로
+      // 찾아서 지우는데(deleteDocsWhere), 쿼리는 read 규칙으로 판정되기 때문이다.
+      // read가 recipientId만 허용하던 동안에는 postId/actorId로 거는 정리 쿼리가 통째로
+      // 거부돼서 게시물 삭제·계정 탈퇴가 실패했다.
+      //
+      // 넓힌 범위의 노출 정도: actorId는 "내가 만든 알림"이라 이미 아는 사실이고,
+      // postGone은 글이 지워진 뒤에만 열린다. || 는 앞에서 끊기므로 대부분의 문서는
+      // exists() 호출 없이 판정된다(규칙의 문서 접근 횟수 제한을 아끼기 위한 순서).
+      allow read: if isSignedIn()
+        && (resource.data.recipientId == request.auth.uid
+            || resource.data.actorId == request.auth.uid
+            || postGone(resource.data.postId));
       allow create: if isSignedIn()
         && request.resource.data.actorId == request.auth.uid
         && request.resource.data.recipientId != request.auth.uid;

@@ -69,8 +69,10 @@ export async function deleteAllUserContent(uid: string, nickname?: string): Prom
   const writings = await deleteQueryDocs('writings', 'userId', uid);
 
   // 알림함도 흔적이 남지 않게 정리한다(내가 받은 것 + 내가 남긴 것 모두).
-  await deleteQueryDocs('notifications', 'recipientId', uid);
-  await deleteQueryDocs('notifications', 'actorId', uid);
+  // 실패해도 탈퇴 자체를 막지는 않는다 — 계정과 글이 사라지는 게 훨씬 중요하고,
+  // 남은 알림은 이미 없는 대상을 가리켜 화면에서 걸러진다.
+  await deleteQueryDocs('notifications', 'recipientId', uid).catch(() => {});
+  await deleteQueryDocs('notifications', 'actorId', uid).catch(() => {});
 
   // 닉네임 예약을 해제해 다른 사용자가 다시 쓸 수 있게 한다.
   if (nickname) {
