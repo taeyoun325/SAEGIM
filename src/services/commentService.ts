@@ -153,16 +153,28 @@ export async function getComments(
 
 // 댓글을 지우면 그 댓글에 달린 답글과 좋아요도 함께 정리한다
 // (답글은 한 단계뿐이라 재귀 없이 한 번만 훑으면 된다).
+//
+// 삭제 순서가 중요하다. 답글과 좋아요는 남이 만든 문서라 평소엔 본인만 지울 수 있고,
+// 보안 규칙은 "대상이 이미 사라져 고아가 됐을 때"만 남의 것 정리를 허용한다.
+// 그래서 원댓글 → 답글 → 좋아요 순으로 지운다. 반대로 하면 답글이나 좋아요가 달린
+// 댓글은 삭제가 권한 오류로 실패한다(firestore.rules의 commentGone 참고).
 export async function deleteComment(commentId: string, postId: string): Promise<void> {
   const repliesSnap = await getDocs(query(collection(db, commentsCol), where('parentCommentId', '==', commentId)));
+
+  // 1) 원댓글부터 지운다 — 이 시점부터 답글/좋아요가 고아로 판정돼 정리가 허용된다.
+  await deleteDoc(doc(db, commentsCol, commentId));
+
+  // 2) 답글을 지우고, 각 답글에 달린 좋아요도 답글이 사라진 뒤에 정리한다.
   let removedCount = 1;
   for (const reply of repliesSnap.docs) {
-    await deleteDocsWhere('commentLikes', 'commentId', reply.id);
     await deleteDoc(reply.ref);
+    await deleteDocsWhere('commentLikes', 'commentId', reply.id);
     removedCount++;
   }
+
+  // 3) 원댓글에 달렸던 좋아요 정리.
   await deleteDocsWhere('commentLikes', 'commentId', commentId);
-  await deleteDoc(doc(db, commentsCol, commentId));
+
   for (let i = 0; i < removedCount; i++) {
     await adjustCommentCount(postId, -1);
   }

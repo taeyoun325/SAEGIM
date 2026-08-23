@@ -29,6 +29,12 @@ service cloud.firestore {
       return !exists(/databases/$(database)/documents/posts/$(postId));
     }
 
+    // 댓글에 대해서도 같은 원리. 댓글이 지워지면 거기 달린 좋아요와 답글은 고아가 되므로
+    // 그때만 정리를 허용한다(댓글이 살아있는 동안은 여전히 본인 것만 지울 수 있다).
+    function commentGone(commentId) {
+      return !exists(/databases/$(database)/documents/comments/$(commentId));
+    }
+
     // 관리자 명단: 아무도 클라이언트에서 쓰지 못한다. 본인 문서만 읽어 관리자인지 확인할 수 있다.
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -239,10 +245,13 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && withinCooldown('comment', 15);
-      // 본인 댓글, 관리자, 또는 이 댓글이 달린 글을 지우는 중인 글 주인.
-      // (글이 사라지면 그 글의 댓글도 함께 사라져야 고아 데이터가 남지 않는다.)
+      // 본인 댓글이거나 관리자. 그 외에는 "이미 고아가 된 댓글"만 정리할 수 있다:
+      // 글이 사라졌거나(글 삭제), 원댓글이 사라진 답글(댓글 삭제).
       allow delete: if isSignedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin() || postGone(resource.data.postId));
+        && (resource.data.userId == request.auth.uid
+            || isAdmin()
+            || postGone(resource.data.postId)
+            || (resource.data.parentCommentId != null && commentGone(resource.data.parentCommentId)));
       allow update: if isSignedIn() && (onlyCommentLikeCountChanged() || ownerEditingCommentContent());
     }
 
@@ -252,9 +261,11 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && likeId == request.resource.data.commentId + '_' + request.resource.data.userId;
-      // 본인 좋아요이거나, 이 댓글이 달린 글을 지우는 중인 글 주인/관리자.
+      // 본인 좋아요이거나, 대상 댓글/글이 이미 사라져 고아가 된 좋아요.
       allow delete: if isSignedIn()
-        && (resource.data.userId == request.auth.uid || postGone(resource.data.postId));
+        && (resource.data.userId == request.auth.uid
+            || commentGone(resource.data.commentId)
+            || postGone(resource.data.postId));
       allow update: if false;
     }
 

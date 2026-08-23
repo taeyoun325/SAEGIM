@@ -30,10 +30,6 @@ async function deleteMyReactions(
   const snap = await getDocs(query(collection(db, collectionName), where('userId', '==', uid)));
   for (const d of snap.docs) {
     const postId = d.data().postId as string;
-    // 댓글에 달린 좋아요는 댓글이 사라지면 참조할 곳이 없어지므로 함께 정리한다.
-    if (collectionName === 'comments') {
-      await deleteQueryDocs('commentLikes', 'commentId', d.id);
-    }
     const batch = writeBatch(db);
     batch.delete(d.ref);
     batch.update(doc(db, 'posts', postId), { [counterField]: increment(-1) });
@@ -42,6 +38,11 @@ async function deleteMyReactions(
     } catch {
       // 게시물이 이미 지워졌다면 줄일 카운트도 없다. 내 문서만 지우고 넘어간다.
       await deleteDoc(d.ref).catch(() => {});
+    }
+    // 내 댓글에 남이 누른 좋아요는 댓글이 사라진 뒤에야 정리할 수 있다
+    // (보안 규칙이 고아가 된 뒤에만 남의 문서 삭제를 허용한다 — commentGone 참고).
+    if (collectionName === 'comments') {
+      await deleteQueryDocs('commentLikes', 'commentId', d.id);
     }
   }
   return snap.size;
