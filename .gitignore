@@ -55,3 +55,6 @@ store-assets/
 .firebase/
 
 build-output/
+
+# 스토어 스크린샷 등 로컬 이미지 (저장소에 넣지 않는다)
+KakaoTalk_*.jpg
