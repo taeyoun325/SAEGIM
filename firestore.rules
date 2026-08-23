@@ -17,6 +17,18 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // 게시물이 이미 사라졌는지. 게시물에 딸린 좋아요/저장/댓글은 "누른 사람"이 남이라
+    // 평소엔 각자 본인 것만 지울 수 있는데, 글이 삭제되면 그 문서들은 가리킬 대상이 없는
+    // 고아 데이터가 되므로 누구든 정리할 수 있어야 한다(안 그러면 영원히 남는다).
+    //
+    // "글 주인이면 허용"이 아니라 "글이 이미 없으면 허용"인 것이 핵심이다 — 전자로 하면
+    // 글이 살아있는 동안 주인이 남의 좋아요·댓글을 골라 지울 수 있게 되어버린다
+    // (e2e "타인 좋아요/댓글 삭제 차단" 검증이 이걸 막는다).
+    // 따라서 삭제 코드는 반드시 게시물을 먼저 지우고 딸린 문서를 정리해야 한다.
+    function postGone(postId) {
+      return !exists(/databases/$(database)/documents/posts/$(postId));
+    }
+
     // 관리자 명단: 아무도 클라이언트에서 쓰지 못한다. 본인 문서만 읽어 관리자인지 확인할 수 있다.
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -177,7 +189,9 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && likeId == request.resource.data.postId + '_' + request.resource.data.userId;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // 본인 좋아요이거나, 이 좋아요가 달린 글을 지우는 중인 글 주인/관리자.
+      allow delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || postGone(resource.data.postId));
       allow update: if false;
     }
 
@@ -187,7 +201,8 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && saveId == request.resource.data.postId + '_' + request.resource.data.userId;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || postGone(resource.data.postId));
       allow update: if false;
     }
 
@@ -224,7 +239,10 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && withinCooldown('comment', 15);
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // 본인 댓글, 관리자, 또는 이 댓글이 달린 글을 지우는 중인 글 주인.
+      // (글이 사라지면 그 글의 댓글도 함께 사라져야 고아 데이터가 남지 않는다.)
+      allow delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin() || postGone(resource.data.postId));
       allow update: if isSignedIn() && (onlyCommentLikeCountChanged() || ownerEditingCommentContent());
     }
 
@@ -234,7 +252,9 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && likeId == request.resource.data.commentId + '_' + request.resource.data.userId;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // 본인 좋아요이거나, 이 댓글이 달린 글을 지우는 중인 글 주인/관리자.
+      allow delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || postGone(resource.data.postId));
       allow update: if false;
     }
 
@@ -258,8 +278,12 @@ service cloud.firestore {
       // 받은 사람은 자기 알림함을 정리할 수 있고, 보낸 사람(actor)은 계정 삭제 시
       // 자신이 남긴 알림 흔적을 지울 수 있다(다른 사람 알림함을 대신 정리하는 게 아니라
       // "내 행동으로 생긴 기록"만 지우는 것이라 안전하다).
+      // 글이 지워지면 그 글을 가리키는 알림도 함께 정리한다(제3자끼리 주고받은
+      // 답글 알림처럼 내가 당사자가 아닌 알림도 내 글에 달린 것이면 지워야 한다).
       allow delete: if isSignedIn()
-        && (resource.data.recipientId == request.auth.uid || resource.data.actorId == request.auth.uid);
+        && (resource.data.recipientId == request.auth.uid
+            || resource.data.actorId == request.auth.uid
+            || postGone(resource.data.postId));
     }
 
     // 일별 운영 통계 카운터: 원문 콘텐츠는 담지 않고 개수/uid만 담는다.

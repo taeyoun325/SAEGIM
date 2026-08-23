@@ -136,6 +136,14 @@ export async function linkWritingToPost(writingId: string, postId: string | null
   await updateDoc(doc(db, writingsCol, writingId), { postId });
 }
 
+// 게시물이 사라졌을 때 원본 글을 비공개로 되돌리며 연결도 함께 끊는다.
+// 반드시 한 번의 쓰기로 처리해야 한다 — 보안 규칙의 adminResettingWritingVisibility가
+// "visibility가 private이면서 postId가 null"인 요청만 허용하므로, 두 번에 나눠 쓰면
+// 관리자가 신고된 글을 지울 때 첫 쓰기에서 거부된다.
+export async function unlinkWritingFromPost(writingId: string): Promise<void> {
+  await updateDoc(doc(db, writingsCol, writingId), { visibility: 'private', postId: null });
+}
+
 export async function updateWritingMood(writingId: string, mood: string | null): Promise<void> {
   await updateDoc(doc(db, writingsCol, writingId), { mood });
 }

@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Post, Writing } from '../types/models';
-import { linkWritingToPost, updateWritingVisibility } from './writingService';
+import { linkWritingToPost, updateWritingVisibility, unlinkWritingFromPost } from './writingService';
 import { FEED_PAGE_SIZE } from '../constants/config';
 
 const postsCol = 'posts';
@@ -38,6 +38,11 @@ export async function deleteDocsWhere(collectionName: string, field: string, val
 
 // 게시물과 연결된 댓글/댓글좋아요/좋아요/저장/알림을 함께 지운다.
 // 게시물 삭제(본인/관리자) 경로에서 공용으로 쓴다.
+//
+// ⚠️ 반드시 게시물 문서를 먼저 지운 뒤에 호출해야 한다. 이 문서들은 남이 만든 것이라
+// 평소엔 본인만 지울 수 있고, 보안 규칙이 "글이 이미 사라졌을 때만" 남의 것 정리를
+// 허용하기 때문이다(firestore.rules의 postGone 참고). 순서를 바꾸면 좋아요·댓글이
+// 달린 글은 삭제가 권한 오류로 실패한다.
 export async function deletePostRelatedContent(postId: string): Promise<void> {
   // 댓글은 개별 문서 id가 있어야 그 댓글에 달린 좋아요를 지울 수 있으므로 먼저 조회한다.
   const commentsSnap = await getDocs(query(collection(db, 'comments'), where('postId', '==', postId)));
@@ -67,10 +72,14 @@ export async function publishWriting(writing: Writing): Promise<string> {
   return postRef.id;
 }
 
+// 공개 취소. 게시물 문서가 사라지면 거기 달렸던 좋아요/댓글/저장/알림은 가리킬 대상이
+// 없어지므로 함께 정리한다 — 남겨두면 보안 규칙상 누구도 지울 수 없는 고아 데이터가 된다
+// (딸린 문서 삭제 권한이 "그 글의 주인"인지로 판정되는데, 글이 이미 없으면 판정 자체가 불가).
+// 반드시 게시물보다 먼저 지워야 하는 이유도 같다.
 export async function unpublishPost(postId: string, writingId: string): Promise<void> {
   await deleteDoc(doc(db, postsCol, postId));
-  await updateWritingVisibility(writingId, 'private');
-  await linkWritingToPost(writingId, null);
+  await deletePostRelatedContent(postId);
+  await unlinkWritingFromPost(writingId);
 }
 
 export async function getPostById(postId: string): Promise<Post | null> {
@@ -111,10 +120,9 @@ export async function getUserPublicPosts(userId: string): Promise<Post[]> {
 }
 
 export async function deletePost(postId: string, writingId: string): Promise<void> {
-  await deletePostRelatedContent(postId);
   await deleteDoc(doc(db, postsCol, postId));
-  await updateWritingVisibility(writingId, 'private');
-  await linkWritingToPost(writingId, null);
+  await deletePostRelatedContent(postId);
+  await unlinkWritingFromPost(writingId);
 }
 
 // 글을 원본까지 완전히 삭제한다.
@@ -123,8 +131,8 @@ export async function deletePost(postId: string, writingId: string): Promise<voi
 // 게시물·딸린 콘텐츠·원본 글을 한 번에 지운다.
 export async function deleteWritingCompletely(writingId: string, postId: string | null): Promise<void> {
   if (postId) {
-    await deletePostRelatedContent(postId);
     await deleteDoc(doc(db, postsCol, postId));
+    await deletePostRelatedContent(postId);
   }
   await deleteDoc(doc(db, 'writings', writingId));
 }

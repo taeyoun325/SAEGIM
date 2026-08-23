@@ -50,14 +50,16 @@ async function deleteMyReactions(
 // 사용자 콘텐츠를 모두 삭제한다. Auth 계정 삭제 직전에 호출해야 한다
 // (계정이 먼저 사라지면 보안 규칙 때문에 콘텐츠를 지울 권한이 없어진다).
 export async function deleteAllUserContent(uid: string, nickname?: string): Promise<DeletionSummary> {
-  // 내 게시물에 다른 사람이 남긴 댓글/좋아요/저장이 고아로 남지 않도록 먼저 정리한다.
+  // 공개 게시물을 지워 다른 사용자 피드에서 즉시 사라지게 한다.
   const myPostsSnap = await getDocs(query(collection(db, 'posts'), where('userId', '==', uid)));
+  const posts = await deleteQueryDocs('posts', 'userId', uid);
+
+  // 그다음 내 게시물에 다른 사람이 남긴 댓글/좋아요/저장을 정리한다.
+  // 게시물을 먼저 지워야 하는 이유는 deletePostRelatedContent 주석 참고
+  // (보안 규칙이 "글이 사라진 뒤"에만 남의 문서 정리를 허용한다).
   for (const p of myPostsSnap.docs) {
     await deletePostRelatedContent(p.id);
   }
-
-  // 공개 게시물을 지워 다른 사용자 피드에서 즉시 사라지게 한다.
-  const posts = await deleteQueryDocs('posts', 'userId', uid);
   // 내가 다른 사람 글에 남긴 댓글/좋아요도 지운다(그 글의 카운트까지 함께 정리).
   const comments = await deleteMyReactions('comments', 'commentCount', uid);
   const likes = await deleteMyReactions('likes', 'likeCount', uid);
