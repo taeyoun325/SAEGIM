@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import Text from '../components/Text';
+import Avatar from '../components/Avatar';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -101,13 +102,7 @@ export default function OtherProfileScreen() {
       ListHeaderComponent={
         <View style={styles.header}>
           <View style={styles.identityRow}>
-            {profile.photoURL ? (
-              <Image source={{ uri: profile.photoURL }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarInitial}>{profile.nickname.charAt(0)}</Text>
-              </View>
-            )}
+            <Avatar profile={profile} size={56} />
             <View style={styles.identityText}>
               <Text style={styles.nickname}>{profile.nickname}</Text>
               <Text style={styles.joined}>가입일 {formatDisplayDate(timestampToDateString(profile.createdAt))}</Text>
@@ -162,9 +157,6 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { paddingTop: spacing.lg },
   identityRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarPlaceholder: { backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 20, fontWeight: '800', color: colors.primary },
   identityText: { marginLeft: spacing.md, flex: 1 },
   nickname: { fontSize: 22, fontWeight: '800', color: colors.primary },
   joined: { color: colors.textSoft, marginTop: spacing.xs, fontSize: 12 },

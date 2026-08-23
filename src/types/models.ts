@@ -66,6 +66,10 @@ export interface UserProfile {
   uid: string;
   nickname: string;
   photoURL?: string | null;
+  // 사진을 직접 올리지 않는 사용자를 위한 프로필 표시 방식. photoURL이 있으면
+  // 그게 우선이고, 없을 때만 이 값을 쓴다. 값이 없으면(기존 사용자) 'name'과
+  // 동일하게 처리한다 — 지금까지 보이던 모습이 그대로 유지되도록.
+  avatarType?: 'default' | 'name' | 'pet';
   createdAt: number;
   writingCount: number;
   publicPostCount: number;

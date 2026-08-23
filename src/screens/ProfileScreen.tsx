@@ -1,20 +1,20 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity, Image } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { View, StyleSheet, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import Text from '../components/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import { colors, spacing, radius } from '../constants/theme';
-import { Post, Writing } from '../types/models';
+import { Post, Writing, UserProfile } from '../types/models';
 import { getUserPublicPosts } from '../services/postService';
 import { getMyWritings } from '../services/writingService';
 import { updateUserProfile, syncUserCounts } from '../services/userService';
-import { uploadProfileImage } from '../services/storageService';
 import { evaluateAndAwardBadges } from '../services/badgeService';
 import { BADGE_DEFS, BadgeDef } from '../constants/badges';
 import PostCard from '../components/PostCard';
+import Avatar from '../components/Avatar';
+import AvatarPickerModal from '../components/AvatarPickerModal';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
 import BadgeCelebrationModal from '../components/BadgeCelebrationModal';
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'written' | 'public'>('public');
   const likedPostIds = useLikedPosts(posts, user?.uid);
   const [loading, setLoading] = useState(true);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDef | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,30 +93,14 @@ export default function ProfileScreen() {
     }, [load])
   );
 
-  async function handlePickImage() {
+  async function handleSelectAvatarType(type: NonNullable<UserProfile['avatarType']>) {
     if (!user) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      await notify('권한이 필요해요', '사진 접근 권한을 허용해주세요.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (result.canceled || !result.assets[0]) return;
-
-    setUploadingPhoto(true);
+    setAvatarPickerOpen(false);
     try {
-      const url = await uploadProfileImage(user.uid, result.assets[0].uri);
-      await updateUserProfile(user.uid, { photoURL: url });
+      await updateUserProfile(user.uid, { avatarType: type });
       await refreshProfile();
     } catch (e) {
-      await notify('오류', '프로필 사진 업로드에 실패했어요.');
-    } finally {
-      setUploadingPhoto(false);
+      await notify('오류', '프로필 표시를 바꾸지 못했어요.');
     }
   }
 
@@ -156,21 +140,14 @@ export default function ProfileScreen() {
           <View style={styles.header}>
             <View style={styles.identityRow}>
               <TouchableOpacity
-                onPress={handlePickImage}
-                disabled={uploadingPhoto}
+                onPress={() => setAvatarPickerOpen(true)}
                 style={styles.avatarWrap}
                 accessibilityRole="button"
-                accessibilityLabel="프로필 사진 바꾸기"
+                accessibilityLabel="프로필 표시 바꾸기"
               >
-                {profile.photoURL ? (
-                  <Image source={{ uri: profile.photoURL }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Text style={styles.avatarInitial}>{profile.nickname.charAt(0)}</Text>
-                  </View>
-                )}
+                <Avatar profile={profile} size={64} />
                 <View style={styles.avatarBadge}>
-                  {uploadingPhoto ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.avatarBadgeText}>📷</Text>}
+                  <Text style={styles.avatarBadgeText}>✏️</Text>
                 </View>
               </TouchableOpacity>
               <View style={styles.identityText}>
@@ -322,6 +299,9 @@ export default function ProfileScreen() {
         ListFooterComponent={<BackgroundMascot source={require('../assets/mascot-profile.png')} />}
       />
       <BadgeCelebrationModal badge={celebrationBadge} onClose={() => setCelebrationBadge(null)} />
+      {avatarPickerOpen && (
+        <AvatarPickerModal profile={profile} onSelect={handleSelectAvatarType} onClose={() => setAvatarPickerOpen(false)} />
+      )}
     </View>
   );
 }
@@ -361,9 +341,6 @@ const styles = StyleSheet.create({
   header: { paddingTop: spacing.lg },
   identityRow: { flexDirection: 'row', alignItems: 'center' },
   avatarWrap: { position: 'relative' },
-  avatar: { width: 64, height: 64, borderRadius: 32 },
-  avatarPlaceholder: { backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 24, fontWeight: '800', color: colors.primary },
   avatarBadge: {
     position: 'absolute',
     bottom: -2,
