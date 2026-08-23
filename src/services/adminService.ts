@@ -205,24 +205,27 @@ async function resolveReportPostId(report: Report): Promise<string | null> {
 export async function deleteReportedContent(report: Report, adminUid: string): Promise<void> {
   const postId = await resolveReportPostId(report);
   let authorId: string | null = null;
-  try {
-    if (report.targetType === 'post') {
-      const post = await getPostById(report.targetId);
-      authorId = post?.userId ?? null;
-      // deletePost는 댓글/좋아요/저장까지 함께 지우고 원본 글을 비공개로 되돌린다.
-      if (post) await deletePost(post.id, post.writingId);
-    } else {
-      const snap = await getDoc(doc(db, 'comments', report.targetId));
-      if (snap.exists()) {
-        const comment = snap.data() as Comment;
-        authorId = comment.userId;
-        // deleteComment는 게시물의 commentCount도 함께 맞춘다.
-        await deleteComment(report.targetId, comment.postId);
-      }
+
+  // "이미 지워진 콘텐츠"는 아래 존재 여부 검사로 조용히 넘어간다. 그 밖의 실패(권한 오류,
+  // 네트워크 등)는 절대 삼키면 안 된다 — 삼키면 콘텐츠는 그대로 남은 채 신고만
+  // "처리 완료"로 닫히고, 신고자에게는 조치했다는 알림까지 가버린다.
+  // 호출부(AdminReportsScreen)가 오류를 받아 "삭제에 실패했어요"를 띄우고 신고를
+  // 목록에 남겨두므로, 여기서는 그대로 던지는 것이 맞다.
+  if (report.targetType === 'post') {
+    const post = await getPostById(report.targetId);
+    authorId = post?.userId ?? null;
+    // deletePost는 댓글/좋아요/저장까지 함께 지우고 원본 글을 비공개로 되돌린다.
+    if (post) await deletePost(post.id, post.writingId);
+  } else {
+    const snap = await getDoc(doc(db, 'comments', report.targetId));
+    if (snap.exists()) {
+      const comment = snap.data() as Comment;
+      authorId = comment.userId;
+      // deleteComment는 게시물의 commentCount도 함께 맞춘다.
+      await deleteComment(report.targetId, comment.postId);
     }
-  } catch {
-    // 이미 삭제된 콘텐츠일 수 있다. 신고 처리는 계속 진행한다.
   }
+
   await updateDoc(doc(db, 'reports', report.id), { status: 'reviewed' });
   // 콘텐츠가 이미 지워졌으므로 postId를 못 찾은 경우(드묾)에는 알림을 보내지 않는다
   // — AppNotification.postId는 필수 필드라 빈 값을 넣을 수 없다.
