@@ -52,9 +52,11 @@ export default function PostDetailScreen() {
   // 목록에서 글을 탭해 들어오면(focusComments) 첫 댓글이 화면 맨 위에 오도록 스크롤한다.
   // 글 본문은 바로 위에 그대로 있어 위로 올리면 다시 볼 수 있다.
   //
-  // 헤더(글 본문) 높이를 재서 그만큼 내리는 방식은 쓰지 않는다 — react-native-web에서
-  // ListHeaderComponent의 onLayout이 호출되지 않아 높이가 0으로 남는다.
-  // scrollToIndex(0)은 헤더 높이를 몰라도 첫 항목을 맨 위로 맞춰주므로 웹/네이티브 모두 동작한다.
+  // ⚠️ 웹(react-native-web)에서는 동작하지 않는다. ListHeaderComponent의 onLayout이
+  // 호출되지 않아 FlatList가 헤더(글 본문) 높이를 모르고, 그래서 scrollToIndex가
+  // 첫 항목의 위치를 계산하지 못한다(실측 확인). 네이티브에서는 정상 동작한다.
+  // 실패해도 글이 맨 위에 보이는 기존 화면 그대로라 문제가 되지 않아, 웹 전용 우회는
+  // 두지 않았다 — 배포 대상은 안드로이드 앱이고 웹은 보조 수단이다.
   const listRef = useRef<FlatList<any>>(null);
   const didAutoScrollRef = useRef(false);
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; authorId: string; nickname: string } | null>(null);
@@ -163,7 +165,7 @@ export default function PostDetailScreen() {
     }, [load])
   );
 
-  // 헤더 높이가 측정되고 댓글이 실제로 그려진 뒤에 한 번만 댓글 위치로 내린다.
+  // 댓글이 실제로 그려진 뒤에 한 번만 첫 댓글을 화면 맨 위로 올린다.
   useEffect(() => {
     if (!focusComments || didAutoScrollRef.current) return;
     if (orderedComments.length === 0) return;
