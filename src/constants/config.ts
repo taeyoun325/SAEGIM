@@ -3,6 +3,10 @@
 export const WRITING_LINE_COUNT = 3;
 export const WRITING_TOTAL_MAX_LENGTH = 120; // 전체 최대 글자 수 (줄바꿈 포함)
 export const WRITING_MIN_LINES_REQUIRED = 1; // 최소 작성 줄 수
+// 실제 상한. 화면은 3줄을 권하지만 줄 수 자체를 막지는 않아 왔고(총 글자 수로만 제한),
+// 짧은 줄 여러 개로 쓰는 사용자가 이미 있다. 보안 규칙(validLines)의 상한과 같은 값이어야
+// 하며, 바꿀 때는 firestore.rules도 함께 고쳐야 한다.
+export const WRITING_MAX_LINES = 10;
 
 export const NICKNAME_MIN_LENGTH = 2;
 export const NICKNAME_MAX_LENGTH = 12;

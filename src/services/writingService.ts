@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Writing } from '../types/models';
-import { WRITING_TOTAL_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED } from '../constants/config';
+import { WRITING_TOTAL_MAX_LENGTH, WRITING_MIN_LINES_REQUIRED, WRITING_MAX_LINES } from '../constants/config';
 import { stampRateLimit, COOLDOWN_MESSAGE, isPermissionDenied } from './rateLimitService';
 
 const writingsCol = 'writings';
@@ -26,6 +26,11 @@ export function validateLines(lines: string[]): { valid: boolean; reason?: strin
   const nonEmpty = lines.filter((l) => l.trim().length > 0);
   if (nonEmpty.length < WRITING_MIN_LINES_REQUIRED) {
     return { valid: false, reason: '내용을 새겨주세요.' };
+  }
+  // 보안 규칙(firestore.rules의 validLines)이 줄 수를 10으로 막는다. 여기서 먼저 걸러야
+  // 사용자가 권한 오류를 받고 "도배 방지" 메시지를 잘못 보게 되는 일이 없다.
+  if (nonEmpty.length > WRITING_MAX_LINES) {
+    return { valid: false, reason: `줄 수는 ${WRITING_MAX_LINES}줄 이내로 새겨주세요.` };
   }
   if (lines.join('\n').length > WRITING_TOTAL_MAX_LENGTH) {
     return { valid: false, reason: `${WRITING_TOTAL_MAX_LENGTH}자 이내로 새겨주세요.` };

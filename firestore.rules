@@ -50,15 +50,23 @@ service cloud.firestore {
 
     // 글 본문(lines) 제약. 댓글에는 규칙 차원의 길이 제한이 있었는데 글에는 없어서,
     // SDK를 직접 쓰면 공개 피드에 거대한 본문을 올릴 수 있었다(문서 한도 1MB까지).
-    // 앱 제한(3줄/전체 120자)보다 넉넉하게 잡되, 남용은 막는 백스톱이다.
+    //
+    // 줄 수 상한을 앱의 "3줄"보다 넉넉한 10으로 잡은 이유: validateLines는 줄 수를
+    // 검사하지 않아(총 120자 이내면 통과) 짧은 줄 4개짜리 글도 지금까지 정상 저장돼 왔다.
+    // 3줄로 조이면 그런 기존 사용 방식이 갑자기 막히고, 앱은 그 실패를 도배 방지
+    // 메시지로 잘못 안내한다. 여기서는 남용만 막고 사용 방식은 건드리지 않는다.
     // 규칙에는 반복문이 없어 줄마다 직접 확인한다.
+    function lineOk(lines, i) {
+      return lines.size() <= i || (lines[i] is string && lines[i].size() <= 200);
+    }
     function validLines(lines) {
       return lines is list
         && lines.size() >= 1
-        && lines.size() <= 3
-        && (lines.size() < 1 || (lines[0] is string && lines[0].size() <= 200))
-        && (lines.size() < 2 || (lines[1] is string && lines[1].size() <= 200))
-        && (lines.size() < 3 || (lines[2] is string && lines[2].size() <= 200));
+        && lines.size() <= 10
+        && lineOk(lines, 0) && lineOk(lines, 1) && lineOk(lines, 2)
+        && lineOk(lines, 3) && lineOk(lines, 4) && lineOk(lines, 5)
+        && lineOk(lines, 6) && lineOk(lines, 7) && lineOk(lines, 8)
+        && lineOk(lines, 9);
     }
 
     // 관리자 명단: 아무도 클라이언트에서 쓰지 못한다. 본인 문서만 읽어 관리자인지 확인할 수 있다.
