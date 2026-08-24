@@ -98,12 +98,28 @@ scripts/       개발용 스크립트 (글감 시드, 아이콘/마스코트 생
 
 ## 검증 방법
 
+통합 테스트는 **실제 Firebase와 배포된 보안 규칙**을 그대로 사용한다. 규칙을 고쳤다면
+`firebase deploy --only firestore:rules` 후에 돌려야 결과가 맞는다.
+
 ```bash
-npx tsc --noEmit                      # 타입 체크
-node scripts/e2e-two-users.mjs        # User A/B 통합 테스트 (실제 Firebase, 30개 검증)
-node scripts/e2e-rate-limit.mjs       # 도배 방지 쿨다운 규칙 검증 (우회 시도 차단 확인)
-node scripts/verify-prompt-fallback.mjs  # 글감 폴백 결정론성 검증
+npm run typecheck   # 타입 체크
+npm run test:all    # 아래 통합 테스트 전체 (약 103개 검증)
 ```
+
+개별 실행:
+
+```bash
+npm run test:e2e        # User A/B 통합 (34) — 가입·글·좋아요·댓글·신고·차단·탈퇴
+npm run test:delete     # 삭제 연쇄와 권한 (21) — 반응이 달린 글/댓글 삭제, 계정 탈퇴
+npm run test:admin      # 관리자 권한 (18) — 신고 조회·처리, 승격 차단, 본문 변조 차단
+npm run test:nickname   # 닉네임 규칙 (12) — 길이·문자셋·사칭어 차단
+npm run test:limits     # 본문 제한 (10) — 줄 수·줄 길이 상한
+npm run test:ratelimit  # 도배 방지 쿨다운 (8) — 우회 시도 차단
+node scripts/verify-prompt-fallback.mjs  # 글감 폴백 결정론성
+```
+
+> 테스트가 만드는 닉네임은 보안 규칙(2~12자, 사칭어 금지)을 지켜야 한다.
+> 타임스탬프를 통째로 붙이면 길이 제한에 걸린다.
 
 ## 도배 방지 (쿨다운)
 

@@ -48,7 +48,9 @@
     "test:ratelimit": "node scripts/e2e-rate-limit.mjs",
     "test:delete": "node scripts/e2e-delete-cascade.mjs",
     "test:nickname": "node scripts/e2e-nickname-rules.mjs",
-    "test:limits": "node scripts/e2e-content-limits.mjs"
+    "test:limits": "node scripts/e2e-content-limits.mjs",
+    "test:admin": "node scripts/e2e-admin.mjs",
+    "test:all": "npm run test:e2e && npm run test:delete && npm run test:admin && npm run test:nickname && npm run test:limits && npm run test:ratelimit"
   },
   "private": true
 }

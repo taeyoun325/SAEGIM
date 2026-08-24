@@ -57,7 +57,10 @@ async function main() {
   const nUid = nCred.user.uid, aUid = aCred.user.uid;
   check('테스트 계정 2개 생성', !!nUid && !!aUid);
 
-  for (const [db, uid, nick] of [[nDb, nUid, `일반${stamp}`], [aDb, aUid, `관리자${stamp}`]]) {
+  // 닉네임은 보안 규칙이 2~12자·사칭어 금지로 막는다(validNickname).
+  // "관리자"가 들어간 이름은 규칙이 정상적으로 차단하므로 테스트용 이름은 이를 피한다.
+  const nickSuffix = stamp.toString().slice(-5);
+  for (const [db, uid, nick] of [[nDb, nUid, `일반${nickSuffix}`], [aDb, aUid, `운영${nickSuffix}`]]) {
     await setDoc(doc(db, 'users', uid), {
       uid, nickname: nick, photoURL: null, createdAt: Date.now(),
       writingCount: 0, publicPostCount: 0, streakCount: 0, lastWritingDate: null, blockedUserIds: [],
