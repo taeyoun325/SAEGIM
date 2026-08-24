@@ -48,6 +48,19 @@ service cloud.firestore {
         && !nick.matches('.*(운영자|관리자|새김).*');
     }
 
+    // 글 본문(lines) 제약. 댓글에는 규칙 차원의 길이 제한이 있었는데 글에는 없어서,
+    // SDK를 직접 쓰면 공개 피드에 거대한 본문을 올릴 수 있었다(문서 한도 1MB까지).
+    // 앱 제한(3줄/전체 120자)보다 넉넉하게 잡되, 남용은 막는 백스톱이다.
+    // 규칙에는 반복문이 없어 줄마다 직접 확인한다.
+    function validLines(lines) {
+      return lines is list
+        && lines.size() >= 1
+        && lines.size() <= 3
+        && (lines.size() < 1 || (lines[0] is string && lines[0].size() <= 200))
+        && (lines.size() < 2 || (lines[1] is string && lines[1].size() <= 200))
+        && (lines.size() < 3 || (lines[2] is string && lines[2].size() <= 200));
+    }
+
     // 관리자 명단: 아무도 클라이언트에서 쓰지 못한다. 본인 문서만 읽어 관리자인지 확인할 수 있다.
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -144,6 +157,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
+        && validLines(request.resource.data.lines)
         && withinCooldown('writing', 60);
       allow update: if isSignedIn()
         && (resource.data.userId == request.auth.uid || adminResettingWritingVisibility());
@@ -188,6 +202,7 @@ service cloud.firestore {
     function ownerEditingContent() {
       return isSignedIn()
         && resource.data.userId == request.auth.uid
+        && validLines(request.resource.data.lines)
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.writingId == resource.data.writingId
         && request.resource.data.promptId == resource.data.promptId
@@ -198,7 +213,9 @@ service cloud.firestore {
 
     match /posts/{postId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && validLines(request.resource.data.lines);
       // 작성자 본인 또는 관리자(신고 처리)가 삭제할 수 있다.
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow update: if isSignedIn() && (onlyCountersChanged(postId) || ownerEditingContent());
