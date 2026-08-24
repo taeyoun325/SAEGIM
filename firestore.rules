@@ -237,8 +237,13 @@ service cloud.firestore {
         && request.resource.data.content == resource.data.content
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.likeCount >= 0
+        // 0도 허용해야 한다(posts의 likeDeltaBackedByLikeDoc과 같은 이유).
+        // 앱은 좋아요를 취소할 때 음수를 막으려고 Math.max(0, n-1)로 쓰는데,
+        // 카운트가 이미 0인 상태에서 좋아요 문서만 남아 있으면 delta가 0이 된다.
+        // ±1만 받으면 그 사용자는 그 댓글의 좋아요를 영영 취소하지 못한다.
         && (request.resource.data.likeCount - resource.data.likeCount == 1
-            || request.resource.data.likeCount - resource.data.likeCount == -1);
+            || request.resource.data.likeCount - resource.data.likeCount == -1
+            || request.resource.data.likeCount == resource.data.likeCount);
     }
 
     // 작성자 본인이 댓글 본문만 고칠 때. 좋아요 수·작성자·작성일·글 id·답글 대상은

@@ -68,6 +68,7 @@ async function main() {
   // (같은 계정으로 연속 댓글을 달면 도배 방지 규칙에 정상적으로 막힌다).
   const C = await session('cascadeC');
   const D = await session('cascadeD'); // 3단계(탈퇴)에서 댓글을 남길 사람
+  const E = await session('cascadeE'); // 4단계(드리프트)에서 댓글을 남길 사람
   const stamp = Date.now();
   // 닉네임은 보안 규칙이 2~12자로 제한하므로(validNickname) 타임스탬프를 통째로 붙일 수 없다.
   const nickSuffix = stamp.toString().slice(-5);
@@ -77,7 +78,8 @@ async function main() {
   const { user: ub } = await createUserWithEmailAndPassword(B.auth, `e2e.del.b.${stamp}@saegim-test.dev`, password);
   const { user: uc } = await createUserWithEmailAndPassword(C.auth, `e2e.del.c.${stamp}@saegim-test.dev`, password);
   const { user: ud } = await createUserWithEmailAndPassword(D.auth, `e2e.del.d.${stamp}@saegim-test.dev`, password);
-  for (const [s, u, nick] of [[A, ua, `삭제A${nickSuffix}`], [B, ub, `삭제B${nickSuffix}`], [C, uc, `삭제C${nickSuffix}`], [D, ud, `삭제D${nickSuffix}`]]) {
+  const { user: ue } = await createUserWithEmailAndPassword(E.auth, `e2e.del.e.${stamp}@saegim-test.dev`, password);
+  for (const [s, u, nick] of [[A, ua, `삭제A${nickSuffix}`], [B, ub, `삭제B${nickSuffix}`], [C, uc, `삭제C${nickSuffix}`], [D, ud, `삭제D${nickSuffix}`], [E, ue, `삭제E${nickSuffix}`]]) {
     await setDoc(doc(s.db, 'users', u.uid), {
       uid: u.uid, nickname: nick, photoURL: null, createdAt: Date.now(),
       writingCount: 0, publicPostCount: 0, streakCount: 0, lastWritingDate: null, blockedUserIds: [],
@@ -305,17 +307,67 @@ async function main() {
   check('탈퇴 후 남의 좋아요/댓글까지 정리됨', l3Left.empty && c3Left.empty && !p3Left.exists(),
     `좋아요 ${l3Left.size} / 댓글 ${c3Left.size} 남음`);
 
+  // ============================================================
+  // 카운트가 0인데 좋아요 문서가 남은 상태(드리프트)에서 취소가 되는가
+  // 앱은 음수를 막으려고 Math.max(0, n-1)로 쓰므로 이때 delta가 0이 된다.
+  // 규칙이 ±1만 받으면 그 댓글의 좋아요를 영영 취소하지 못한다.
+  // ============================================================
+  const post4 = await addDoc(collection(A.db, 'posts'), {
+    writingId: wRef.id, userId: ua.uid, promptId, lines: ['댓글 좋아요 드리프트'],
+    createdAt: Date.now(), likeCount: 0, commentCount: 0,
+  });
+  const driftBatch = writeBatch(E.db);
+  const driftComment = doc(collection(E.db, 'comments'));
+  driftBatch.set(driftComment, {
+    postId: post4.id, userId: ue.uid, authorNickname: `삭제E${nickSuffix}`,
+    content: '드리프트 검증용 댓글', createdAt: Date.now(), likeCount: 0, parentCommentId: null,
+  });
+  driftBatch.update(doc(E.db, 'posts', post4.id), { commentCount: increment(1) });
+  stampRateLimit(driftBatch, E.db, ue.uid, 'comment');
+  try {
+    await driftBatch.commit();
+    check('드리프트 검증용 댓글 작성', true);
+  } catch (e) {
+    check('드리프트 검증용 댓글 작성', false, String(e.code || e));
+    throw e;
+  }
+
+  // likeCount는 0인 채로 좋아요 문서만 만들어 드리프트 상태를 재현한다.
+  const dlId = `${driftComment.id}_${ua.uid}`;
+  await setDoc(doc(A.db, 'commentLikes', dlId), {
+    id: dlId, commentId: driftComment.id, postId: post4.id, userId: ua.uid, createdAt: Date.now(),
+  });
+  check('댓글좋아요 드리프트 상태 생성', true);
+
+  let driftError = null;
+  try {
+    // 앱 toggleCommentLike의 취소 경로와 동일: 문서 삭제 + Math.max(0, 0-1) = 0
+    const b = writeBatch(A.db);
+    b.delete(doc(A.db, 'commentLikes', dlId));
+    b.update(doc(A.db, 'comments', driftComment.id), { likeCount: 0 });
+    await b.commit();
+  } catch (e) {
+    driftError = e;
+  }
+  check('카운트 0에서도 댓글 좋아요 취소 가능', driftError === null,
+    driftError ? String(driftError.code || driftError) : '');
+
+  await deleteDoc(doc(A.db, 'comments', driftComment.id)).catch(() => {});
+  await deleteDoc(doc(A.db, 'posts', post4.id)).catch(() => {});
+
   // --- 정리 ---
   await deleteDoc(doc(A.db, 'posts', post2.id)).catch(() => {});
   await deleteDoc(wRef).catch(() => {});
   await deleteDoc(doc(A.db, 'users', ua.uid)).catch(() => {});
   await deleteDoc(doc(B.db, 'users', ub.uid)).catch(() => {});
   await deleteDoc(doc(C.db, 'users', uc.uid)).catch(() => {});
+  await deleteDoc(doc(E.db, 'users', ue.uid)).catch(() => {});
   await deleteDoc(doc(D.db, 'users', ud.uid)).catch(() => {});
   await A.auth.currentUser?.delete().catch(() => {});
   await B.auth.currentUser?.delete().catch(() => {});
   await C.auth.currentUser?.delete().catch(() => {});
   await D.auth.currentUser?.delete().catch(() => {});
+  await E.auth.currentUser?.delete().catch(() => {});
 
   console.log(`\n=== 결과: ${pass.length} PASS / ${fail.length} FAIL ===`);
   if (fail.length) {
@@ -326,6 +378,7 @@ async function main() {
   await deleteApp(B.app);
   await deleteApp(C.app);
   await deleteApp(D.app);
+  await deleteApp(E.app);
   process.exit(fail.length ? 1 : 0);
 }
 
