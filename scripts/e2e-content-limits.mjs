@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, addDoc, collection, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, addDoc, collection, deleteDoc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 const env = Object.fromEntries(
   readFileSync(new URL('../.env', import.meta.url), 'utf8')
@@ -84,6 +84,26 @@ try {
 } catch {
   check('writings 초장문 차단', true);
 }
+
+// 지금까지는 생성(create) 경로만 확인했다. 본문 수정(ownerEditingContent)에도 같은
+// validLines가 걸려 있는데 아직 검증한 적이 없다 — 별도 회귀 지점이니 따로 확인한다.
+const editRef = await addDoc(collection(db, 'posts'), {
+  writingId: 'dummy', userId: user.uid, promptId, lines: ['수정 테스트'],
+  createdAt: Date.now(), likeCount: 0, commentCount: 0,
+});
+created.push(editRef);
+
+async function tryEdit(lines) {
+  try {
+    await updateDoc(editRef, { lines });
+    return true;
+  } catch {
+    return false;
+  }
+}
+check('본문 수정 — 정상 범위 허용', await tryEdit(['고친 첫 줄', '고친 둘째 줄']));
+check('본문 수정 — 11줄 차단', !(await tryEdit(['1','2','3','4','5','6','7','8','9','10','11'])));
+check('본문 수정 — 초장문 차단', !(await tryEdit(['가'.repeat(5000)])));
 
 for (const ref of created) await deleteDoc(ref).catch(() => {});
 await deleteDoc(doc(db, 'users', user.uid)).catch(() => {});
