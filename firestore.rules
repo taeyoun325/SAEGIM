@@ -35,6 +35,19 @@ service cloud.firestore {
       return !exists(/databases/$(database)/documents/comments/$(commentId));
     }
 
+    // 닉네임 규칙. 지금까지 utils/nickname.ts(클라이언트)에만 있어서, Firebase SDK로
+    // 직접 쓰면 "관리자"·"운영자" 같은 이름으로 사칭이 가능했다. 닉네임은 글·댓글에
+    // 그대로 노출되므로(authorNickname) 규칙에서도 같은 조건을 강제한다.
+    // src/constants/config.ts의 NICKNAME_MIN/MAX_LENGTH, BLOCKED_NICKNAME_WORDS와 맞출 것.
+    function validNickname(nick) {
+      return nick is string
+        && nick.size() >= 2
+        && nick.size() <= 12
+        && nick.matches('^[가-힣a-zA-Z0-9_. ]+$')
+        && !nick.lower().matches('.*(admin|saegim).*')
+        && !nick.matches('.*(운영자|관리자|새김).*');
+    }
+
     // 관리자 명단: 아무도 클라이언트에서 쓰지 못한다. 본인 문서만 읽어 관리자인지 확인할 수 있다.
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -74,8 +87,8 @@ service cloud.firestore {
     // 사용자 프로필: 본인만 쓰기, 로그인한 사용자는 공개 프로필 필드를 읽을 수 있음.
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow create: if isOwner(uid) && validNickname(request.resource.data.nickname);
+      allow update: if isOwner(uid) && validNickname(request.resource.data.nickname);
       allow delete: if isOwner(uid);
     }
 
@@ -103,7 +116,9 @@ service cloud.firestore {
     // 아무도 이미 예약된 문서를 덮어쓸 수 없고, 본인 예약만 해제(계정 삭제 시)할 수 있다.
     match /nicknames/{nicknameKey} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && validNickname(request.resource.data.nickname);
       allow update: if false;
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }

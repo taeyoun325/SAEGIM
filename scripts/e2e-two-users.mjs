@@ -93,7 +93,9 @@ async function main() {
   check('프로필 문서 생성', true);
 
   // --- 닉네임 유니크: A가 예약한 닉네임을 B가 가로챌 수 없어야 함 ---
-  const sharedNick = `e2e공용닉${stamp}`;
+  // 닉네임은 보안 규칙이 2~12자로 제한하므로(validNickname) 타임스탬프를 통째로 붙이면
+  // 규칙에 걸린다. 실행 간 충돌만 피하면 되니 뒤 6자리만 쓴다.
+  const sharedNick = `e2e공용${stamp.toString().slice(-6)}`;
   await setDoc(doc(A.db, 'nicknames', sharedNick.toLowerCase()), {
     uid: ua.uid, nickname: sharedNick, createdAt: Date.now(),
   });

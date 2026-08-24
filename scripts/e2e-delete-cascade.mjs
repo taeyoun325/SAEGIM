@@ -69,13 +69,15 @@ async function main() {
   const C = await session('cascadeC');
   const D = await session('cascadeD'); // 3단계(탈퇴)에서 댓글을 남길 사람
   const stamp = Date.now();
+  // 닉네임은 보안 규칙이 2~12자로 제한하므로(validNickname) 타임스탬프를 통째로 붙일 수 없다.
+  const nickSuffix = stamp.toString().slice(-5);
   const password = 'e2eTest1234!';
 
   const { user: ua } = await createUserWithEmailAndPassword(A.auth, `e2e.del.a.${stamp}@saegim-test.dev`, password);
   const { user: ub } = await createUserWithEmailAndPassword(B.auth, `e2e.del.b.${stamp}@saegim-test.dev`, password);
   const { user: uc } = await createUserWithEmailAndPassword(C.auth, `e2e.del.c.${stamp}@saegim-test.dev`, password);
   const { user: ud } = await createUserWithEmailAndPassword(D.auth, `e2e.del.d.${stamp}@saegim-test.dev`, password);
-  for (const [s, u, nick] of [[A, ua, `삭제테스트A${stamp}`], [B, ub, `삭제테스트B${stamp}`], [C, uc, `삭제테스트C${stamp}`], [D, ud, `삭제테스트D${stamp}`]]) {
+  for (const [s, u, nick] of [[A, ua, `삭제A${nickSuffix}`], [B, ub, `삭제B${nickSuffix}`], [C, uc, `삭제C${nickSuffix}`], [D, ud, `삭제D${nickSuffix}`]]) {
     await setDoc(doc(s.db, 'users', u.uid), {
       uid: u.uid, nickname: nick, photoURL: null, createdAt: Date.now(),
       writingCount: 0, publicPostCount: 0, streakCount: 0, lastWritingDate: null, blockedUserIds: [],
@@ -113,7 +115,7 @@ async function main() {
   const cBatch = writeBatch(B.db);
   const cRef = doc(collection(B.db, 'comments'));
   cBatch.set(cRef, {
-    postId: postRef.id, userId: ub.uid, authorNickname: `삭제테스트B${stamp}`,
+    postId: postRef.id, userId: ub.uid, authorNickname: `삭제B${nickSuffix}`,
     content: 'B의 댓글', createdAt: Date.now(), likeCount: 0, parentCommentId: null,
   });
   cBatch.update(doc(B.db, 'posts', postRef.id), { commentCount: increment(1) });
@@ -180,7 +182,7 @@ async function main() {
   const parentBatch = writeBatch(A.db);
   const parentRef = doc(collection(A.db, 'comments'));
   parentBatch.set(parentRef, {
-    postId: post2.id, userId: ua.uid, authorNickname: `삭제테스트A${stamp}`,
+    postId: post2.id, userId: ua.uid, authorNickname: `삭제A${nickSuffix}`,
     content: 'A의 원댓글', createdAt: Date.now(), likeCount: 0, parentCommentId: null,
   });
   parentBatch.update(doc(A.db, 'posts', post2.id), { commentCount: increment(1) });
@@ -197,7 +199,7 @@ async function main() {
   const replyBatch = writeBatch(C.db);
   const replyRef = doc(collection(C.db, 'comments'));
   replyBatch.set(replyRef, {
-    postId: post2.id, userId: uc.uid, authorNickname: `삭제테스트C${stamp}`,
+    postId: post2.id, userId: uc.uid, authorNickname: `삭제C${nickSuffix}`,
     content: 'C의 답글', createdAt: Date.now(), likeCount: 0, parentCommentId: parentRef.id,
   });
   replyBatch.update(doc(C.db, 'posts', post2.id), { commentCount: increment(1) });
@@ -262,7 +264,7 @@ async function main() {
   const c3Batch = writeBatch(D.db);
   const c3Ref = doc(collection(D.db, 'comments'));
   c3Batch.set(c3Ref, {
-    postId: post3.id, userId: ud.uid, authorNickname: `삭제테스트D${stamp}`,
+    postId: post3.id, userId: ud.uid, authorNickname: `삭제D${nickSuffix}`,
     content: 'D의 댓글', createdAt: Date.now(), likeCount: 0, parentCommentId: null,
   });
   c3Batch.update(doc(D.db, 'posts', post3.id), { commentCount: increment(1) });

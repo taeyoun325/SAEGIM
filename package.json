@@ -46,7 +46,8 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "node scripts/e2e-two-users.mjs",
     "test:ratelimit": "node scripts/e2e-rate-limit.mjs",
-    "test:delete": "node scripts/e2e-delete-cascade.mjs"
+    "test:delete": "node scripts/e2e-delete-cascade.mjs",
+    "test:nickname": "node scripts/e2e-nickname-rules.mjs"
   },
   "private": true
 }
