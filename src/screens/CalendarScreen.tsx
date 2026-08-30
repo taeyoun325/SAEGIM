@@ -14,6 +14,7 @@ import PostCard from '../components/PostCard';
 import { useLikedPosts } from '../hooks/useLikedPosts';
 import BackgroundMascot from '../components/BackgroundMascot';
 import TopBarButtons from '../components/TopBarButtons';
+import { todayDateString, dateStringToPromptId } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -26,7 +27,12 @@ function pad(n: number) {
 export default function CalendarScreen() {
   const { user, profile } = useAuth();
   const navigation = useNavigation<Nav>();
-  const [cursor, setCursor] = useState(() => new Date());
+  // 시작 달도 서비스 기준(KST) 오늘이 속한 달이어야 한다 — 로컬 시간으로 잡으면
+  // 월말/월초 시차 구간에서 오늘 칸이 없는 달이 먼저 열린다.
+  const [cursor, setCursor] = useState(() => {
+    const [y, m] = todayDateString().split('-').map(Number);
+    return new Date(y, m - 1, 1);
+  });
   const [myWritings, setMyWritings] = useState<Record<string, Writing>>({});
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -102,15 +108,14 @@ export default function CalendarScreen() {
     setPopularPosts([]);
   }
 
-  const todayStr = useMemo(() => {
-    const t = new Date();
-    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
-  }, []);
+  // "오늘"은 기기 시간대가 아니라 서비스 기준(KST)으로 잡아야 한다. 로컬 시간으로 구하면
+  // 시차가 있는 기기에서 오늘의 글감(TodayScreen)과 하루가 어긋나, 방금 새긴 글이 달력에는
+  // "아직 오지 않은 날"로 잠겨 보이고 오늘 칸도 엉뚱한 날에 표시된다.
+  const todayStr = useMemo(() => todayDateString(), []);
 
   const myWritingForSelected = selectedPrompt ? myWritings[selectedPrompt.id] : null;
 
-  const now = new Date();
-  const todayPromptId = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+  const todayPromptId = dateStringToPromptId(todayStr);
   const todayWriting = myWritings[todayPromptId];
 
   return (

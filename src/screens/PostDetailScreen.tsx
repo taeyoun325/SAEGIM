@@ -228,7 +228,9 @@ export default function PostDetailScreen() {
       });
       setCommentText('');
       setReplyingTo(null);
-      const page = await getComments(post.id);
+      // 정렬을 "최신순"으로 바꿔둔 상태에서 댓글을 달면, 여기서 정렬을 넘기지 않아
+      // 목록만 조용히 등록순으로 돌아가 있었다(칩은 최신순 그대로).
+      const page = await getComments(post.id, null, commentSort);
       setComments(page.comments);
       setCommentsLastDoc(page.lastDoc);
       setPost({ ...post, commentCount: post.commentCount + 1 });
@@ -306,9 +308,11 @@ export default function PostDetailScreen() {
     const ok = await confirm({ title: '댓글을 삭제할까요?', confirmLabel: '삭제', destructive: true });
     if (!ok) return;
     try {
-      await deleteComment(comment.id, post.id);
-      setComments((prev) => prev.filter((c) => c.id !== comment.id));
-      setPost({ ...post, commentCount: Math.max(0, post.commentCount - 1) });
+      // 댓글을 지우면 거기 달린 답글도 함께 사라진다. 원댓글 하나만 목록에서 빼고
+      // 댓글 수를 -1 하면, 답글이 남아 최상위 댓글처럼 보이고 개수도 서버와 어긋난다.
+      const removed = await deleteComment(comment.id, post.id);
+      setComments((prev) => prev.filter((c) => c.id !== comment.id && c.parentCommentId !== comment.id));
+      setPost({ ...post, commentCount: Math.max(0, post.commentCount - removed) });
     } catch (e) {
       await notify('오류', '댓글을 삭제하지 못했어요.');
     }

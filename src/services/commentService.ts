@@ -158,7 +158,10 @@ export async function getComments(
 // 보안 규칙은 "대상이 이미 사라져 고아가 됐을 때"만 남의 것 정리를 허용한다.
 // 그래서 원댓글 → 답글 → 좋아요 순으로 지운다. 반대로 하면 답글이나 좋아요가 달린
 // 댓글은 삭제가 권한 오류로 실패한다(firestore.rules의 commentGone 참고).
-export async function deleteComment(commentId: string, postId: string): Promise<void> {
+//
+// 지운 댓글 수(원댓글 + 답글)를 돌려준다. 호출부가 화면의 댓글 수를 -1만 하면
+// 답글이 달린 댓글을 지웠을 때 서버 값과 어긋나므로, 실제로 몇 개가 사라졌는지 알려준다.
+export async function deleteComment(commentId: string, postId: string): Promise<number> {
   const repliesSnap = await getDocs(query(collection(db, commentsCol), where('parentCommentId', '==', commentId)));
 
   // 1) 원댓글부터 지운다 — 이 시점부터 답글/좋아요가 고아로 판정돼 정리가 허용된다.
@@ -175,7 +178,10 @@ export async function deleteComment(commentId: string, postId: string): Promise<
   // 3) 원댓글에 달렸던 좋아요 정리.
   await deleteDocsWhere('commentLikes', 'commentId', commentId);
 
+  // 보안 규칙이 commentCount를 한 번에 ±1까지만 허용해 한 개씩 줄인다.
   for (let i = 0; i < removedCount; i++) {
     await adjustCommentCount(postId, -1);
   }
+
+  return removedCount;
 }

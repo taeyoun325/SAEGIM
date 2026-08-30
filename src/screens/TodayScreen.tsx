@@ -196,6 +196,10 @@ export default function TodayScreen() {
           const awarded = await evaluateAndAwardBadges(user.uid, result.profile);
           newBadges = awarded.newBadges;
         }
+        // 방금 저장한 글을 다시 조회하지 않고 로컬로 재구성하는데, 여기에 category를
+        // 빠뜨리면 아래 publishWriting이 카테고리 없는 게시물을 만든다(createWriting에는
+        // prompt.category가 들어가 원본 글에만 남는다). 그러면 저장한 글 화면의
+        // 카테고리 필터에서 그 글만 빠진다.
         currentWriting = {
           id,
           userId: user.uid,
@@ -206,6 +210,7 @@ export default function TodayScreen() {
           visibility: 'private',
           postId: null,
           mood,
+          ...(prompt.category ? { category: prompt.category } : {}),
         };
       } else if (JSON.stringify(currentWriting.lines) !== JSON.stringify(cleanLines)) {
         await updateWritingContent(currentWriting.id, lines);
