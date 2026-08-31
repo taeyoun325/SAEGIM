@@ -24,7 +24,8 @@ function PatternLayer({ pattern, color }: { pattern: SharePattern; color: string
   // 좌표 계산은 카드 크기가 고정이라 한 번만 하면 된다.
   const cells = useMemo(() => {
     if (pattern === 'dots') {
-      const gap = 26;
+      // 촘촘하면 본문 위로 점이 겹쳐 글이 읽기 어려워진다(실측 확인). 넉넉히 벌린다.
+      const gap = 34;
       const out: { left: number; top: number }[] = [];
       for (let y = gap; y < CARD_HEIGHT; y += gap) {
         for (let x = gap; x < CARD_WIDTH; x += gap) out.push({ left: x, top: y });
@@ -61,7 +62,8 @@ function PatternLayer({ pattern, color }: { pattern: SharePattern; color: string
   if (cells.length === 0) return null;
 
   const size = pattern === 'stars' ? 2.5 : 2;
-  const opacity = pattern === 'stars' ? 0.55 : 0.35;
+  // 밤하늘의 별은 눈에 띄어야 하지만, 점무늬는 배경으로만 남아야 글이 주인공이 된다.
+  const opacity = pattern === 'stars' ? 0.55 : 0.2;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {cells.map((c, i) => (
