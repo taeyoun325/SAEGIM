@@ -17,6 +17,8 @@ import {
   restoreWriting,
   getTrashedWritings,
   purgeExpiredTrash,
+  deleteTrashedWriting,
+  emptyTrash,
   toggleWritingFavorite,
   TRASH_GRACE_DAYS,
 } from '../services/writingService';
@@ -281,6 +283,50 @@ export default function MyWritingsScreen() {
       await load();
     } catch (e) {
       await notify('오류', '복구에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 보관 기한을 기다리지 않고 바로 지운다. 지우려고 지운 글을 30일 동안 계속
+  // 마주쳐야 하는 건 그 자체로 불편하고, 남기고 싶지 않은 내용이면 더욱 그렇다.
+  async function handleDeleteTrashed(writing: Writing) {
+    if (!user) return;
+    const ok = await confirm({
+      title: '완전히 삭제할까요?',
+      message: '이 글은 복구할 수 없어요.',
+      confirmLabel: '완전 삭제',
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteTrashedWriting(writing.id);
+      setTrashed((prev) => prev.filter((w) => w.id !== writing.id));
+    } catch (e) {
+      await notify('오류', '삭제에 실패했어요.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEmptyTrash() {
+    if (!user || trashed.length === 0) return;
+    const ok = await confirm({
+      title: `휴지통의 글 ${trashed.length}개를 모두 삭제할까요?`,
+      message: '복구할 수 없어요.',
+      confirmLabel: '모두 삭제',
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await emptyTrash(user.uid);
+      setTrashed([]);
+    } catch (e) {
+      // 중간까지 지워졌을 수 있으므로 화면 상태를 서버에서 다시 맞춘다.
+      await notify('오류', '일부를 삭제하지 못했어요.');
+      setTrashed(await getTrashedWritings(user.uid).catch(() => trashed));
     } finally {
       setBusy(false);
     }
@@ -605,8 +651,20 @@ export default function MyWritingsScreen() {
           <View style={styles.sheet}>
             <Text style={styles.sheetDate}>🗑 휴지통</Text>
             <Text style={styles.trashHint}>
-              비공개 글을 지우면 여기 {TRASH_GRACE_DAYS}일 동안 보관돼요. 기한이 지나면 완전히 사라져요.
+              비공개 글을 지우면 여기 {TRASH_GRACE_DAYS}일 동안 보관돼요. 기한이 지나면 완전히 사라지고,
+              기다리지 않고 지금 바로 지울 수도 있어요.
             </Text>
+            {trashed.length > 0 && !trashLoading && (
+              <TouchableOpacity
+                onPress={handleEmptyTrash}
+                disabled={busy}
+                style={styles.emptyTrashButton}
+                accessibilityRole="button"
+                accessibilityLabel="휴지통 비우기"
+              >
+                <Text style={styles.emptyTrashText}>휴지통 비우기</Text>
+              </TouchableOpacity>
+            )}
             {trashLoading ? (
               <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
             ) : (
@@ -627,6 +685,14 @@ export default function MyWritingsScreen() {
                         accessibilityLabel="글 복구"
                       >
                         <Text style={styles.restoreText}>복구</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteTrashed(w)}
+                        disabled={busy}
+                        accessibilityRole="button"
+                        accessibilityLabel="글 완전 삭제"
+                      >
+                        <Text style={styles.deleteForeverText}>삭제</Text>
                       </TouchableOpacity>
                     </View>
                   ))
@@ -775,4 +841,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   restoreText: { color: colors.primary, fontWeight: '700' },
+  deleteForeverText: { color: colors.danger, fontWeight: '700' },
+  emptyTrashButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  emptyTrashText: { color: colors.danger, fontSize: 13, fontWeight: '600' },
 });

@@ -50,7 +50,9 @@
     "test:nickname": "node scripts/e2e-nickname-rules.mjs",
     "test:limits": "node scripts/e2e-content-limits.mjs",
     "test:admin": "node scripts/e2e-admin.mjs",
-    "test:all": "npm run test:e2e && npm run test:delete && npm run test:admin && npm run test:nickname && npm run test:limits && npm run test:ratelimit"
+    "test:trash": "node scripts/e2e-trash.mjs",
+    "test:prompts": "node scripts/check-prompt-pool.js",
+    "test:all": "npm run test:prompts && npm run test:e2e && npm run test:delete && npm run test:admin && npm run test:nickname && npm run test:limits && npm run test:trash && npm run test:ratelimit"
   },
   "private": true
 }

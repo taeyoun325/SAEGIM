@@ -108,6 +108,28 @@ export async function restoreWriting(writingId: string): Promise<void> {
   await updateDoc(doc(db, writingsCol, writingId), { deletedAt: null });
 }
 
+// 휴지통에 있는 글을 보관 기한을 기다리지 않고 바로 지운다.
+// 지우고 싶어서 지운 글을 30일 동안 계속 보게 되는 건 그 자체로 불편하고,
+// 남기고 싶지 않은 내용을 적었을 때는 기다리라고 할 이유가 없다.
+//
+// 휴지통에 들어오는 글은 비공개 글뿐이라(공개 글은 즉시 완전 삭제 경로를 탄다)
+// 딸린 게시물·댓글·좋아요가 없어 문서 하나만 지우면 끝이다.
+export async function deleteTrashedWriting(writingId: string): Promise<void> {
+  await deleteDoc(doc(db, writingsCol, writingId));
+}
+
+// 휴지통을 한 번에 비운다. 한 건씩 지우다 중간에 실패해도 이미 지운 것은 그대로 두고
+// 몇 건을 지웠는지 돌려준다 — 전부 성공해야만 의미가 있는 작업이 아니다.
+export async function emptyTrash(userId: string): Promise<number> {
+  const trashed = await getTrashedWritings(userId);
+  let removed = 0;
+  for (const w of trashed) {
+    await deleteDoc(doc(db, writingsCol, w.id));
+    removed++;
+  }
+  return removed;
+}
+
 export async function getTrashedWritings(userId: string): Promise<Writing[]> {
   const q = query(collection(db, writingsCol), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
