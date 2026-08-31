@@ -1,10 +1,21 @@
+import type { ShareFontKey } from '../services/shareFontService';
+
 // 공유 카드는 SNS로 나가는 산출물이므로 보내는 사람의 기기 테마(다크모드)를 따르지 않는다.
 // 같은 글을 공유하면 누가 공유해도 같은 카드가 나와야 하고, '밤' 테마와도 구분돼야 한다.
 //
-// 색은 직접 정한 값이라 외부 에셋 라이선스 문제가 없다(Open Color 같은 공개 팔레트의
-// 톤 구성 방식을 참고했을 뿐, 이미지나 폰트를 가져다 쓰지 않는다).
-// 각 테마는 단색이 아니라 두 색 그라디언트로 깊이를 주고, 브랜드 이름 아래
-// 얇은 강조선을 둬서 글이 주인공으로 보이게 만든다.
+// 꾸밈에 쓰는 외부 소스는 글꼴 하나뿐이다 — 구글 폰트(Open Font License)에서 가져온
+// 나눔명조와 개구. 상업적 사용·재배포가 허용돼 있고 라이선스 전문이 패키지에 함께 들어온다.
+// 이미지·아이콘은 가져다 쓰지 않고 전부 코드로 그린다(원·선·점). 원격 이미지를 쓰면
+// 비행기 모드나 지하철에서 카드가 반쯤 빈 채로 찍히는데, 공유는 그럴 때 더 자주 한다.
+//
+// 각 테마는 색·글꼴·배경 무늬·테두리 네 가지를 조합해 서로 확실히 달라 보이게 만든다.
+
+// 본문 뒤에 깔리는 배경 무늬. 전부 View로 그린다.
+//   none  : 무늬 없음(장식 원만)
+//   dots  : 규칙적인 점무늬 — 노트 표지 느낌
+//   rules : 가로 줄 — 편지지 느낌
+//   stars : 흩뿌린 작은 점 — 밤하늘 느낌
+export type SharePattern = 'none' | 'dots' | 'rules' | 'stars';
 
 export interface ShareTheme {
   id: string;
@@ -16,6 +27,11 @@ export interface ShareTheme {
   // 본문 뒤에 아주 옅게 깔리는 장식 원. 카드가 비어 보이지 않게 해준다.
   blobColor: string;
   showQuoteMarks: boolean;
+  // 본문에 쓸 글꼴. 실제 로딩은 공유 직전에 한 벌만 이뤄진다(shareFontService).
+  font: ShareFontKey;
+  pattern: SharePattern;
+  // 카드 안쪽에 한 겹 두르는 얇은 테두리. 액자처럼 보이게 해 글에 무게를 준다.
+  framed: boolean;
 }
 
 function seasonalTheme(): { gradient: [string, string]; accent: string; blob: string } {
@@ -38,6 +54,9 @@ export const SHARE_THEMES: ShareTheme[] = [
     accentColor: '#96602D',
     blobColor: '#F0D2B4',
     showQuoteMarks: false,
+    font: 'jua',
+    pattern: 'none',
+    framed: false,
   },
   {
     id: 'minimal',
@@ -48,6 +67,9 @@ export const SHARE_THEMES: ShareTheme[] = [
     accentColor: '#5F656E',
     blobColor: '#E8EAEE',
     showQuoteMarks: false,
+    font: 'jua',
+    pattern: 'none',
+    framed: false,
   },
   {
     id: 'emotional',
@@ -57,6 +79,9 @@ export const SHARE_THEMES: ShareTheme[] = [
     accentColor: '#A2503A',
     blobColor: '#F2B9A4',
     showQuoteMarks: true,
+    font: 'myeongjo',
+    pattern: 'none',
+    framed: false,
   },
   {
     id: 'night',
@@ -67,6 +92,9 @@ export const SHARE_THEMES: ShareTheme[] = [
     accentColor: '#E0B778',
     blobColor: '#3A4560',
     showQuoteMarks: false,
+    font: 'myeongjo',
+    pattern: 'stars',
+    framed: false,
   },
   {
     id: 'seasonal',
@@ -76,6 +104,48 @@ export const SHARE_THEMES: ShareTheme[] = [
     accentColor: seasonal.accent,
     blobColor: seasonal.blob,
     showQuoteMarks: false,
+    font: 'jua',
+    pattern: 'none',
+    framed: false,
+  },
+  {
+    id: 'letter',
+    name: '편지',
+    // 손글씨 + 가로 줄. 편지지에 눌러쓴 것처럼 보이게 한다.
+    gradient: ['#FFFCF2', '#F6EEDA'],
+    textColor: '#4A4034',
+    accentColor: '#8A6F45',
+    blobColor: '#EADFC4',
+    showQuoteMarks: false,
+    font: 'handwriting',
+    pattern: 'rules',
+    framed: false,
+  },
+  {
+    id: 'book',
+    name: '문고',
+    // 명조 + 얇은 액자 테두리. 시집 한 쪽을 찍은 듯한 인상.
+    gradient: ['#FBF7F0', '#EFE6D8'],
+    textColor: '#2B2721',
+    accentColor: '#6E5A3E',
+    blobColor: '#E2D6C2',
+    showQuoteMarks: true,
+    font: 'myeongjo',
+    pattern: 'none',
+    framed: true,
+  },
+  {
+    id: 'dotted',
+    name: '점무늬',
+    // 점무늬 배경. 다이어리 속지처럼 가볍고 밝은 인상.
+    gradient: ['#F4F8FF', '#E2ECFA'],
+    textColor: '#28303D',
+    accentColor: '#40618C',
+    blobColor: '#C9DAF0',
+    showQuoteMarks: false,
+    font: 'jua',
+    pattern: 'dots',
+    framed: false,
   },
 ];
 

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@expo-google-fonts/gaegu": "^0.4.1",
     "@expo-google-fonts/jua": "^0.4.1",
+    "@expo-google-fonts/nanum-myeongjo": "^0.4.1",
     "@expo/metro-runtime": "~57.0.12",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
