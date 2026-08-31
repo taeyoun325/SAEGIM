@@ -9,6 +9,7 @@ import AppLockScreen from '../components/AppLockScreen';
 import AuthNavigator from './AuthNavigator';
 import MainTabs from './MainTabs';
 import PostDetailScreen from '../screens/PostDetailScreen';
+import WritingDetailScreen from '../screens/WritingDetailScreen';
 import OtherProfileScreen from '../screens/OtherProfileScreen';
 import ReportScreen from '../screens/ReportScreen';
 import BlockedUsersScreen from '../screens/BlockedUsersScreen';
@@ -62,6 +63,7 @@ const linking: LinkingOptions<RootStackParamList> = {
         },
       },
       PostDetail: 'PostDetail',
+      WritingDetail: 'WritingDetail',
       OtherProfile: 'OtherProfile',
       Report: 'Report',
       BlockedUsers: 'BlockedUsers',
@@ -128,6 +130,7 @@ export default function RootNavigator() {
         <Stack.Navigator>
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ title: '게시물' }} />
+          <Stack.Screen name="WritingDetail" component={WritingDetailScreen} options={{ title: '새긴 생각' }} />
           <Stack.Screen name="OtherProfile" component={OtherProfileScreen} options={{ title: '프로필' }} />
           <Stack.Screen name="Report" component={ReportScreen} options={{ title: '신고하기' }} />
           <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: '차단 목록' }} />

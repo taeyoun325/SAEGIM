@@ -17,6 +17,8 @@ export type RootStackParamList = {
   // focusComments: 목록에서 글을 탭해 들어온 경우처럼 댓글부터 보고 싶을 때 true.
   // 글 본문은 목록 카드에서 이미 읽었으므로, 열자마자 댓글 위치로 스크롤한다.
   PostDetail: { postId: string; focusComments?: boolean };
+  // 아직 게시하지 않은 내 글. 게시된 글은 PostDetail로 간다.
+  WritingDetail: { writingId: string };
   OtherProfile: { userId: string };
   Report: { targetType: 'post' | 'comment'; targetId: string };
   BlockedUsers: undefined;

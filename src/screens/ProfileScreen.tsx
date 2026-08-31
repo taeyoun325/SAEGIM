@@ -292,7 +292,14 @@ export default function ProfileScreen() {
           ) : (
             <WrittenRow
               writing={item}
-              onPress={item.postId ? () => navigation.navigate('PostDetail', { postId: item.postId! }) : undefined}
+              // 게시한 글은 게시물 화면으로, 아직 게시하지 않은 글은 비공개 상세 화면으로.
+              // 예전에는 게시하지 않은 글에 onPress를 주지 않아, 목록에서 두 줄로 잘린
+              // 글의 전문을 볼 방법이 아예 없었다.
+              onPress={
+                item.postId
+                  ? () => navigation.navigate('PostDetail', { postId: item.postId! })
+                  : () => navigation.navigate('WritingDetail', { writingId: item.id })
+              }
             />
           )
         }
@@ -316,7 +323,7 @@ function WrittenRow({ writing, onPress }: { writing: Writing; onPress?: () => vo
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? `${writing.lines.join(' ')}, 눌러서 게시물 보기` : undefined}
+      accessibilityLabel={onPress ? `${writing.lines.join(' ')}, 눌러서 자세히 보기` : undefined}
     >
       <View style={styles.writtenRowHeader}>
         <Text style={styles.writtenRowDate}>

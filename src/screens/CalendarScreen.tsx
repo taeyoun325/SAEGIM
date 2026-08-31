@@ -102,6 +102,12 @@ export default function CalendarScreen() {
     }
   }
 
+  // 게시한 글이면 게시물 화면(댓글·좋아요까지), 아직 게시하지 않았으면 비공개 상세 화면.
+  function openWriting(w: Writing) {
+    if (w.postId) navigation.navigate('PostDetail', { postId: w.postId });
+    else navigation.navigate('WritingDetail', { writingId: w.id });
+  }
+
   function closeModal() {
     setSelectedDate(null);
     setSelectedPrompt(null);
@@ -202,7 +208,12 @@ export default function CalendarScreen() {
         <View style={styles.todaySection}>
           <Text style={styles.sectionLabel}>오늘 새긴 생각</Text>
           {todayWriting ? (
-            <View style={styles.myWritingCard}>
+            <TouchableOpacity
+              style={styles.myWritingCard}
+              onPress={() => openWriting(todayWriting)}
+              accessibilityRole="button"
+              accessibilityLabel={`${todayWriting.lines.join(' ')}, 눌러서 자세히 보기`}
+            >
               {todayWriting.lines.map((l, idx) => (
                 <Text key={idx} style={styles.myWritingLine}>
                   {l}
@@ -211,7 +222,7 @@ export default function CalendarScreen() {
               <Text style={todayWriting.visibility === 'public' ? styles.publicBadge : styles.privateBadge}>
                 {todayWriting.visibility === 'public' ? '🌐 공개' : '🔒 비공개'}
               </Text>
-            </View>
+            </TouchableOpacity>
           ) : (
             <Text style={styles.emptyText}>아직 오늘의 생각을 새기지 않았어요.{'\n'}오늘 탭에서 새겨보세요.</Text>
           )}
@@ -231,11 +242,20 @@ export default function CalendarScreen() {
 
                   <Text style={styles.sectionLabel}>내가 새긴 생각</Text>
                   {myWritingForSelected ? (
-                    <View style={styles.myWritingCard}>
+                    <TouchableOpacity
+                      style={styles.myWritingCard}
+                      onPress={() => {
+                        // 모달 위에 화면을 쌓으면 뒤로 왔을 때 모달이 남아 가려지므로 먼저 닫는다.
+                        closeModal();
+                        openWriting(myWritingForSelected);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${myWritingForSelected.lines.join(' ')}, 눌러서 자세히 보기`}
+                    >
                       {myWritingForSelected.lines.map((l, idx) => (
                         <Text key={idx} style={styles.myWritingLine}>{l}</Text>
                       ))}
-                    </View>
+                    </TouchableOpacity>
                   ) : (
                     <Text style={styles.emptyText}>이 날은 새긴 생각이 없어요.</Text>
                   )}
